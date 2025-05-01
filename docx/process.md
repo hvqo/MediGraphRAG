@@ -125,7 +125,7 @@
 
 下图为知识图谱结构：
 
-![graph](https://github.com/Lin-A1/MediGraphRAG/blob/main/docx/images/graph.png?raw=true)
+![graph](https://github.com/hvqo/MediGraphRAG/blob/main/docx/images/graph.png?raw=true)
 
 #### 3. 图数据库构建
 
@@ -137,7 +137,7 @@
 
 以下为`Neo4j`存储片段:
 
-<img src="https://github.com/Lin-A1/MediGraphRAG/blob/main/docx/images/neo4j.png?raw=true" width="600" />
+<img src="https://github.com/hvqo/MediGraphRAG/blob/main/docx/images/neo4j.png?raw=true" width="600" />
 
 
 
@@ -175,7 +175,7 @@
 
 下图为我们进行增强检索生成的流程图
 
-<img src="https://github.com/Lin-A1/MediGraphRAG/blob/main/docx/images/rag.png?raw=true" width="1000" />
+<img src="https://github.com/hvqo/MediGraphRAG/blob/main/docx/images/rag.png?raw=true" width="1000" />
 
 到这一步我们开始调用前面生成的数据进行搭建我们的`医学试题生成`任务的`大模型工作流`
 
