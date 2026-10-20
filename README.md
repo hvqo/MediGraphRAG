@@ -1,14 +1,14 @@
  # MediGraphRAG
 
 ------
-![cover](https://github.com/Lin-A1/MediGraphRAG/blob/main/docx/images/cover.png?raw=true)
+![cover](https://github.com/hvqo/MediGraphRAG/blob/main/docx/images/cover.png?raw=true)
 
 MediGraphRAG 项目旨在构建一个医疗知识图谱并基于此实现 RAG（Retrieval-Augmented Generation）方法，应用于医学试题的生成，提升医学领域的信息管理与应用效率。项目通过知识点抽取、关系提取和知识融合，解决大模型在生成过程中可能出现的幻觉问题，确保模型生成内容的准确性和可靠性。最终目标是为医学教育和实践提供一个动态、准确的知识支持系统。
 
 <div align='center'>
      <p>
-        <a href='https://github.com/Lin-A1/MediGraphRAG'><img src='https://img.shields.io/badge/Project-Page-Green'></a>
-        <img src='https://img.shields.io/github/stars/Lin-A1/MediGraphRAG?color=green&style=social' />
+        <a href='https://github.com/hvqo/MediGraphRAG'><img src='https://img.shields.io/badge/Project-Page-Green'></a>
+        <img src='https://img.shields.io/github/stars/hvqo/MediGraphRAG?color=green&style=social' />
      </p>
      <p>
         <img src="https://img.shields.io/badge/python-3.10-blue">
@@ -60,7 +60,7 @@ pip install -r requirements.txt
 # 先构建好上面所描述环境
 
 # 拉取项目
-git clone git@github.com:Lin-A1/MediGraphRAG.git
+git clone https://github.com/hvqo/MediGraphRAG.git
 cd MediGraphRAG
 
 # 虚拟环境
