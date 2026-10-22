@@ -4,6 +4,9 @@ from fastapi.responses import JSONResponse
 import os
 from medigraph.config import SettingsStore, SettingsUpdate, model_paths
 from medigraph.llm import ModelClient, ModelError
+from medigraph.storage import Database
+from medigraph.documents import DocumentStore, DocumentError
+from medigraph.document_routes import routes as document_routes
 
 
 def create_app(data_dir=None):
@@ -11,6 +14,13 @@ def create_app(data_dir=None):
     app.add_middleware(CORSMiddleware, allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","), allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
     app.state.settings = SettingsStore(data_dir)
     app.state.model = ModelClient(app.state.settings)
+    app.state.db = Database(app.state.settings.directory)
+    app.state.documents = DocumentStore(app.state.db)
+    app.include_router(document_routes(app.state.documents))
+
+    @app.exception_handler(DocumentError)
+    async def document_error(request: Request, error: DocumentError):
+        return JSONResponse(status_code=422, content={"detail": str(error)})
 
     @app.exception_handler(ModelError)
     async def model_error(request: Request, error: ModelError):

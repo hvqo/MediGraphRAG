@@ -1,0 +1,47 @@
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+import sqlite3
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+class Database:
+    def __init__(self, directory):
+        self.directory = Path(directory)
+        self.path = self.directory / 'knowledge.sqlite3'
+        with self.connect() as connection:
+            connection.executescript('''
+                CREATE TABLE IF NOT EXISTS documents (
+                    id TEXT PRIMARY KEY, title TEXT NOT NULL, filename TEXT NOT NULL,
+                    kind TEXT NOT NULL, created_at TEXT NOT NULL, pages INTEGER NOT NULL,
+                    chunk_count INTEGER NOT NULL, warnings TEXT NOT NULL DEFAULT '[]'
+                );
+                CREATE TABLE IF NOT EXISTS chunks (
+                    id TEXT PRIMARY KEY, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+                    ordinal INTEGER NOT NULL, page INTEGER, location TEXT NOT NULL,
+                    start_offset INTEGER NOT NULL, end_offset INTEGER NOT NULL, text TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS chunks_document ON chunks(document_id);
+            ''')
+
+    @contextmanager
+    def connect(self):
+        connection = sqlite3.connect(self.path, timeout=30)
+        connection.row_factory = sqlite3.Row
+        connection.execute('PRAGMA foreign_keys=ON')
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
+
+    def rows(self, sql, parameters=()):
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(sql, parameters)]
+
+    def chunks(self):
+        return self.rows('''SELECT c.*, d.title, d.filename FROM chunks c
+                            JOIN documents d ON d.id=c.document_id ORDER BY c.document_id, c.ordinal''')

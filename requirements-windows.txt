@@ -25,3 +25,5 @@ agentops==0.2.6
 pyarrow==16.1.0
 wheel==0.45.1
 chardet==5.2.0
+pypdf==5.1.0
+python-multipart==0.0.20

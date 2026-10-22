@@ -539,6 +539,8 @@ pymongo==4.18.3
     # via motor
 pyparsing==3.3.3
     # via httplib2
+pypdf==5.1.0
+    # via -r requirements-windows.txt
 python-dateutil==2.9.0.post0
     # via
     #   botocore
@@ -555,6 +557,8 @@ python-dotenv==1.0.0
     #   qianfan
     #   semantic-kernel
     #   spark-ai-python
+python-multipart==0.0.20
+    # via -r requirements-windows.txt
 pytz==2026.5
     # via
     #   neo4j
@@ -763,6 +767,7 @@ typing-extensions==4.9.0
     #   pydantic
     #   pydantic-core
     #   pyee
+    #   pypdf
     #   sqlalchemy
     #   torch
     #   typer
