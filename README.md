@@ -1,190 +1,319 @@
- # MediGraphRAG
+<div align="center">
 
-------
-![cover](https://github.com/hvqo/MediGraphRAG/blob/main/docx/images/cover.png?raw=true)
+# MediGraphRAG
 
-MediGraphRAG 项目旨在构建一个医疗知识图谱并基于此实现 RAG（Retrieval-Augmented Generation）方法，应用于医学试题的生成，提升医学领域的信息管理与应用效率。项目通过知识点抽取、关系提取和知识融合，解决大模型在生成过程中可能出现的幻觉问题，确保模型生成内容的准确性和可靠性。最终目标是为医学教育和实践提供一个动态、准确的知识支持系统。
+**医学知识图谱增强检索与试题生成**
 
-<div align='center'>
-     <p>
-        <a href='https://github.com/hvqo/MediGraphRAG'><img src='https://img.shields.io/badge/Project-Page-Green'></a>
-        <img src='https://img.shields.io/github/stars/hvqo/MediGraphRAG?color=green&style=social' />
-     </p>
-     <p>
-        <img src="https://img.shields.io/badge/python-3.10-blue">
-        <img src="https://img.shields.io/badge/ollama-available-blue">
-    </p>
+Neo4j · FAISS · BGE · MetaGPT · Vue 3
+
+[功能特性](#功能特性) · [系统架构](#系统架构) · [快速开始](#快速开始) · [配置说明](#配置说明) · [API](#api) · [项目结构](#项目结构)
+
 </div>
 
+MediGraphRAG 是面向医学教育的 GraphRAG 项目。它将医学知识组织为知识图谱，通过向量检索与重排序获取相关证据，再由智能体完成知识整理和试题生成，输出题干、选项、答案与解析。
 
-## 环境
-- `ollama`:[https://ollama.com/download](https://ollama.com/download)
-- `python`:`conda create -n med python=3.10`
-- `qwen2.5:14b`:`ollama run qwen2.5`
+## 功能特性
 
-```sh
-# ollama
-# ollama自行选择参数量大小，同时可以选择调用api，只需要在comfig上进行修改metagpt配置即可
-# 同时留意agent/questionGenerator.py中有调用ollama模块进行试题生成的验证，可以将其注释掉，强行判断验证结果，
-curl -fsSL https://ollama.com/install.sh | sh # unbutu
-ollama run qwen2.5
-ollama run glm4
-ollama run deepseek-r1
+- **知识图谱构建**：抽取医学实体与关系，规范化实体名称，将知识导入 Neo4j。
+- **融合检索**：结合 FAISS 向量召回、图谱关联查询和 BGE 重排序，筛选相关知识。
+- **智能体协作**：知识清洗与试题生成两个角色协同工作，并对生成结果进行模型质量判断。
+- **结构化题目**：输出题干、选项、答案和解析，支持后续人工审核与题库整理。
+- **可视化交互**：通过 Web 页面检索知识、查看图谱并生成题目。
 
-# docker
-docker pull neo4j:latest
-docker run --name med-neo4j -d -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/test neo4j:latest
+## 系统架构
 
-# model
-cd model
-git lfs install
-git clone https://huggingface.co/BAAI/bge-large-zh-v1.5
-git clone https://huggingface.co/BAAI/bge-reranker-v2-m3
+```mermaid
+flowchart TB
+    subgraph BUILD[知识库构建]
+        A[医学知识] --> B[实体与关系抽取]
+        B --> C[名称规范化]
+        C --> D[(Neo4j 知识图谱)]
+        D --> E[BGE 文本嵌入]
+        E --> F[(FAISS 索引与节点映射)]
+    end
 
-# python
-conda create -n med python=3.10
-conda activate med
-cd MediGraphRAG
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
-pip install -r requirements.txt
+    subgraph RAG[检索与生成]
+        Q[输入关键词] --> V[向量召回]
+        V --> G[图谱证据提取]
+        G --> R[BGE 重排序]
+        R --> K[知识清洗 Agent]
+        K --> T[试题生成 Agent]
+        T --> O[题干、选项、答案与解析]
+        T --> J[模型质量判断]
+        J --> S[保存通过判断的结果]
+    end
+
+    F -.-> V
+    D -.-> G
+    O --> API[FastAPI]
+    D -.图谱查询.-> API
+    API --> UI[Vue 3 / ECharts]
 ```
 
-## 数据来源
-
-- `顶层数据`->`医学考试试题` :已经进行知识的抽取，存储在`data/knowledge`中
-- `可信数据`->`医疗书籍`：https://github.com/scienceasdf/medical-books -> [data/medical-books]
-- `嵌入模型`： https://huggingface.co/BAAI/bge-large-zh-v1.5 -> [model/bge-large-zh-v1.5]
+检索链路默认召回 30 个候选，结合图谱提取知识与关系，再通过重排序保留 3 条相关知识。
 
 ## 快速开始
-```bash
-# 先构建好上面所描述环境
 
-# 拉取项目
+### 环境要求
+
+| 组件 | 推荐配置 |
+| --- | --- |
+| 操作系统 | Ubuntu 24.04 LTS 或兼容 Linux 环境 |
+| Python | 3.10，使用独立虚拟环境 |
+| Node.js | [24 LTS](https://nodejs.org/en/about/previous-releases) |
+| Neo4j | 5.26 系列 |
+| 模型服务 | Ollama |
+| 内存 | 32GB 起，较大知识库建议 64GB |
+| GPU | 推荐 16–24GB 显存；12GB 可优先选择 4B 模型 |
+| 存储 | SSD，建议预留 50GB 以上可用空间 |
+
+显存需求取决于模型、上下文长度，以及嵌入和重排模型的同时占用。以上为部署建议。
+
+### 1. 获取项目
+
+```bash
 git clone https://github.com/hvqo/MediGraphRAG.git
 cd MediGraphRAG
 
-# 虚拟环境
-conda activate med
+conda create -n medigraphrag python=3.10 -y
+conda activate medigraphrag
+```
 
-# 创建neo4j知识图谱
-cd utils
-python GraphBuilder.py
+Python 运行环境需要 PyTorch、Transformers、FAISS、Neo4j Driver、LangChain、MetaGPT、FastAPI 和 Uvicorn 等依赖。
 
-# 进行检索生成（仅支持ollama）
-cd ..
-python utils/generate.py
+> **安装状态**：仓库的 Python 依赖尚未锁定，`requirements.txt` 仍需整理，MetaGPT 的依赖解析存在阻塞。以下步骤以兼容依赖已准备完成为前提，暂不提供一键安装命令。
 
-# 使用智能体
-python main.py
+### 2. 下载模型
 
-# 可视化页面
+推荐使用 [Qwen3.5 9B Q4_K_M](https://ollama.com/library/qwen3.5:9b-q4_K_M) 进行本地生成，使用 BGE 完成嵌入和重排序：
+
+```bash
+# 生成模型
+ollama pull qwen3.5:9b-q4_K_M
+
+# 检索模型：需要已安装 Hugging Face CLI
+hf download BAAI/bge-large-zh-v1.5 --local-dir model/bge-large-zh-v1.5
+hf download BAAI/bge-reranker-v2-m3 --local-dir model/bge-reranker-v2-m3
+```
+
+资源有限时，可将生成模型替换为 `qwen3.5:4b`。模型目录中的配置与分词器文件不能替代完整权重。
+
+### 3. 启动 Neo4j
+
+```bash
+read -rsp 'Neo4j password: ' MEDIGRAPH_NEO4J_PASSWORD
+echo
+
+docker run -d --name medigraphrag-neo4j \
+  -p 127.0.0.1:7474:7474 \
+  -p 127.0.0.1:7687:7687 \
+  -v medigraphrag-neo4j-data:/data \
+  -e NEO4J_AUTH="neo4j/${MEDIGRAPH_NEO4J_PASSWORD}" \
+  neo4j:5.26
+
+unset MEDIGRAPH_NEO4J_PASSWORD
+```
+
+Neo4j 管理界面：`http://localhost:7474`。完成下方[配置说明](#配置说明)中的路径、数据库和模型设置后，再准备知识库。
+
+### 4. 准备知识库
+
+使用 [data/graph/graph.json](data/graph/graph.json) 中的现有图谱数据导入 Neo4j，然后生成 FAISS 索引与节点映射。索引和映射必须与当前数据库配套，数据库重建或迁移后需重新生成。
+
+<details>
+<summary>展开：导入现有图谱并生成索引</summary>
+
+在项目根目录执行。该操作会向配置指定的数据库写入图谱，并覆盖本地索引与映射文件。
+
+```bash
+PYTHONPATH="$PWD/utils:$PWD" python - <<'PY'
+import os
+from pathlib import Path
+import yaml
+from utils.Embedding import LoadModel
+from utils.GraphBuilder import Neo4jKnowledgeGraph, Neo4jFAISSIndexer
+
+root = Path.cwd()
+cfg = yaml.safe_load((root / "config/config.yaml").read_text())
+base = Path(cfg["base"]["dir"])
+neo = cfg["neo4j"]
+uri = f"bolt://{neo['host']}:{neo['port']}"
+args = (uri, neo["user"], neo["password"])
+
+Neo4jKnowledgeGraph(*args, str(base / cfg["graph"]["dir"])).execute()
+model, tokenizer = LoadModel()
+for key in ("faiss_index_path", "metadata_path"):
+    (base / cfg["faiss"][key]).parent.mkdir(parents=True, exist_ok=True)
+
+# 索引器使用相对于 utils 的配置路径。
+os.chdir(root / "utils")
+indexer = Neo4jFAISSIndexer(*args, model, tokenizer)
+indexer.create_faiss_index()
+indexer.fetcher.close()
+PY
+```
+
+如需从新的知识点重新抽取图谱，使用 `utils/GraphBuilder.py` 中的 `GraphBuilder` 与 `GraphNormalizer`，显式指定生成模型。
+
+</details>
+
+### 5. 启动应用
+
+后端，在项目根目录执行：
+
+```bash
+python -m uvicorn web.api.main:app --host 127.0.0.1 --port 8000
+```
+
+前端，在另一终端执行：
+
+```bash
 cd web/frontend
-npm install
+npm ci
+npm run dev -- --host 127.0.0.1
+```
 
-cd ../../
+打开 Vite 输出的页面地址即可使用。后端交互式 API 文档位于 `http://127.0.0.1:8000/docs`。
+
+<details>
+<summary>其他运行方式</summary>
+
+以下命令均从项目根目录执行：
+
+```bash
+# 纯 LangChain 检索与试题生成示例
+python -m utils.generate
+
+# MetaGPT 批量生成，遍历 main.py 中的关键词
+python main.py --investment 1000 --n_round 2
+
+# 同时启动前后端开发服务
 bash web/run.sh
 ```
 
-构建流程可见[process.md](docx/process.md)
+`web/run.sh` 会安装前端依赖并启用后端热重载，适合开发使用。
 
-## 更新
-```text
-2025.03.13:
-- 使用fastapi将检索流程封装为接口：bash api/run.sh
-- 生成器与解释器使用模型拆解，分别使用deepseek-r1:32b与qwen2.5:32b
+</details>
 
-2025.03.24：
-- 作者显卡换了，模型改用14b
-- 引入rerank模型，在知识库调出知识点后进行一次重排序
+## 配置说明
 
-2025.03.24：
-- 开始使用api啦！（可以自己在config中选择ollama还是api）
-- 在web目录下构建了web页面
+### 路径与数据库
+
+编辑 `config/config.yaml`，将 `base.dir` 设置为项目的绝对路径：
+
+```yaml
+base:
+  dir: /absolute/path/to/MediGraphRAG
+save:
+  dir: save
+knowledge:
+  dir: data/knowledge/knowledge.json
+graph:
+  dir: data/graph/graph.json
+faiss:
+  faiss_index_path: data/faiss_index/faiss_index.index
+  metadata_path: data/faiss_index/matedata.npy
+embedding:
+  path: model/bge-large-zh-v1.5
+rerank:
+  path: model/bge-reranker-v2-m3
+neo4j:
+  host: localhost
+  port: 7687
+  user: neo4j
+  password: YOUR_NEO4J_PASSWORD
 ```
----
 
-### 知识库构建
+Web 图谱接口使用 `web/api/main.py` 中的 `NEO4J_URI`、`NEO4J_USER` 和 `NEO4J_PASSWORD`，需要填写相同的数据库连接信息。前端 API 地址位于 `web/frontend/src/App.vue`，默认请求 `http://localhost:8000`。
 
-#### 1. **知识点抽取**
-使用`qwen2.5:14b`从医学试题中抽取考题知识点。清洗后数据存储在[knowledge.json](data/knowledge/knowledge.json)中。
+### 生成模型
 
-#### 2. **关系抽取**
-同样使用`qwen2.5:14b`从抽取的知识点中识别实体与关系。数据存储在[graph.json](data/knowledge/graph.json)中。模型抽取时需指定实体与关系类别，避免错误抽取。
+MetaGPT 使用以下 Ollama 配置：
 
-#### 3. **Neo4j构建**
-使用[Neo4jBuilder.py](docx/process/data/Neo4jBuilder.py)将知识图谱数据导入Neo4j图数据库，以支持高效检索。
+```yaml
+llm:
+  api_type: ollama
+  base_url: http://127.0.0.1:11434/api
+  model: qwen3.5:9b-q4_K_M
+  temperature: 0.2
+```
 
----
+将生成与质量判断入口统一设置为所选模型：
 
-### RAG流程
+| 功能 | 配置入口 |
+| --- | --- |
+| 知识清洗 | MetaGPT 加载的 `config/config2.yaml` |
+| 试题生成 | `config/deepseek-r1.yaml` 中的 `llm` |
+| 图谱抽取与名称规范化 | `utils/GraphBuilder.py` 中的 `model_name` 参数 |
+| LangChain 生成示例 | `utils/generate.py` 中的 `Ollama(model=...)` |
+| 题目质量判断 | `agent/questionGenerator.py` 中的 `Ollama(model=...)` |
 
-#### 1. **嵌入模型**
-使用`bge-large-zh-v1.5`进行实体和知识点编码
+模型配置分布在上述入口，需要分别设置。接入云服务时，使用服务商提供的模型 ID、API 类型和凭据。配置格式参考 [MetaGPT 文档](https://docs.deepwisdom.ai/main/en/guide/get_started/configuration/llm_api_configuration.html)。
 
-#### 2. **Neo4j数据提取**
-使用[Neo4jEntityFetcher.py](docx/process/rag/Neo4jEntityFetcher.py)从Neo4j提取实体，提供基于属性、标签等条件的查询接口。
+### 检索模型
 
-#### 3. **FAISS索引生成**
-通过[IndexBuild.py](docx/process/rag/IndexBuild.py)构建FAISS索引，用于快速匹配实体和知识点。
+| 用途 | 模型 |
+| --- | --- |
+| 中文文本嵌入 | [BAAI/bge-large-zh-v1.5](https://huggingface.co/BAAI/bge-large-zh-v1.5) |
+| 相关性重排序 | [BAAI/bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3) |
 
-#### 4. **RAG工作流**
-在[ragWorkflow.py](docx/process/rag/ragWorkflow.py)中，输入关键词，利用FAISS索引进行实体匹配，提取相关知识点，生成医学试题。
+更换嵌入模型、池化方式或向量维度后，重新生成索引；仅更换生成模型无需重建索引。
 
+## API
 
----
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| `GET` | `/health` | 应用存活状态 |
+| `POST` | `/graph/search` | 关键词图谱查询 |
+| `POST` | `/get-knowledge-and-question` | 知识检索与试题生成 |
 
-### 模型输出
+**请求示例：**
 
-模型根据抽取的知识点生成医学试题，并返回题目、选项、答案和解析。例如：
+```bash
+curl http://127.0.0.1:8000/get-knowledge-and-question \
+  -H 'Content-Type: application/json' \
+  -d '{"keyword":"糖尿病"}'
+```
+
+生成接口返回 `keyword`、`related_keywords`、`knowledge`、`cleaned_knowledge` 和 `question`。其中 `question` 的格式如下：
 
 ```json
 {
-  "topic": "糖尿病患者治疗过程中出现酮症酸中毒，应首选的治疗方法是",
+  "topic": "题干",
   "options": {
-    "A": "口服降糖药",
-    "B": "静脉输注葡萄糖加胰岛素",
-    "C": "口服补液盐",
-    "D": "使用胰岛素泵"
+    "A": "选项一",
+    "B": "选项二",
+    "C": "选项三",
+    "D": "选项四"
   },
-  "answer": "B",
-  "parse": "酮症酸中毒是糖尿病急性并发症，需通过静脉输注葡萄糖和胰岛素来治疗。"
+  "answer": "A",
+  "parse": "答案解析"
 }
 ```
 
-## Agent
->调用智能体使用的是metagpt架构，可以选择调用api，只需要在comfig上进行修改metagpt配置即可
-> 
->同时留意agent/questionGenerator.py中有调用ollama模块进行试题生成的验证，可以将其注释掉，强行判断验证结果，
+## 项目结构
 
-在上述数据准备的基础上，我们使用`metagpt`构建试题，启动脚本为[main.py](main.py),相关agent配置位于[agent](agent),其他脚本位于[utils](utils)
+```text
+MediGraphRAG/
+├── agent/              # 知识清洗、试题生成智能体
+├── config/             # 模型、路径及数据库配置
+├── data/
+│   ├── knowledge/      # 医学知识点
+│   ├── graph/          # 图谱数据
+│   └── faiss_index/    # 向量索引与节点映射
+├── docx/               # 开发文档
+├── model/              # 嵌入与重排模型
+├── save/               # 生成结果
+├── utils/              # 图谱构建、检索与重排序
+├── web/
+│   ├── api/            # FastAPI 后端
+│   └── frontend/       # Vue 3 前端
+├── main.py             # 批量生成入口
+└── requirements.txt    # Python 依赖清单
+```
 
-## 配置
+## 使用说明
 
->开发框架配置
+本项目用于医学教育与研究，生成结果需经专业人员审核。模型质量判断不替代人工审题，项目尚未提供医学准确率评测报告。数据和模型的使用、分发应遵循各自来源的许可要求。
 
-| 类别         | 工具/框架名称      | 功能描述                                                     |
-| ------------ | ------------------ | ------------------------------------------------------------ |
-| 模型部署工具 | Ollama             | 轻量级大模型管理与部署工具，支持多平台适配和快速加载。       |
-| 模型开发框架 | LangChain          | 模块化 NLP 开发框架，支持复杂任务建模与优化。                |
-| 数据构建模型 | qwen2.5:14b        | 参数量 140 亿的语言模型，适用于文本生成与上下文理解任务。    |
-| 智能体框架   | MetaGpt            | 多智能体协作框架，支持任务分解、角色分配和动态交互。         |
-| 智能体模型   | DeepSeek-r1:32B    | 参数量 320 亿的高性能语言模型，具备卓越的推理与理解能力。    |
-| 图数据库     | Neo4j              | 高效的关系型图数据库，适用于知识图谱构建与复杂网络分析。     |
-| 向量检索引擎 | faiss              | 高性能相似性搜索库，用于语义搜索和大规模向量数据处理。       |
-| 嵌入模型     | bge-large-zh-v1.5  | 中文专用嵌入模型，生成高质量语义向量，支持下游任务如分类与检索。 |
-| 重排序模型   | bge-reranker-v2-m3 | 中文Reranker模型，将数据映射到高纬度向量进行数据重排序       |
-
->实验环境硬件资源配置
-
-| 组件     | 规格参数                          | 技术特性                           |
-| -------- | --------------------------------- | ---------------------------------- |
-| 处理器   | Intel Core i7-12700KF (8P+4E/20T) | 基础频率3.6GHz，睿频5.0GHz         |
-| 显卡     | NVIDIA RTX4090 (24GB  GDDR6X)     | CUDA核心16384，FP32算力82.6 TFLOPS |
-| 内存     | DDR4-3592MHz 64GB双通道           | CL18时序，带宽57.5GB/s             |
-| 存储系统 | SamsungSSD980PRO1TB  NVMe SSD ×2  | 顺序读7,000MB/s，写5,100MB/s       |
-| 操作系统 | Ubuntu 22.04 LTS                  | Linux 5.15内核，CUDA 12.2驱动环境  |
-
-
-
-
-
+问题反馈与功能建议请提交至 [Issues](https://github.com/hvqo/MediGraphRAG/issues)。
