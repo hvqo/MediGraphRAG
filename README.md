@@ -10,6 +10,8 @@ Neo4j · FAISS · BGE · MetaGPT · Vue 3
 
 </div>
 
+![MediGraphRAG：医学知识、图谱检索与试题生成](docx/images/readme-cover.png)
+
 MediGraphRAG 是面向医学教育的 GraphRAG 项目。它将医学知识组织为知识图谱，通过向量检索与重排序获取相关证据，再由智能体完成知识整理和试题生成，输出题干、选项、答案与解析。
 
 ## 功能特性
