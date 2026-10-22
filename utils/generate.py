@@ -36,23 +36,29 @@ class MedicalKnowledgeFetcher:
 
         # 初始化模型
         self.model, self.tokenizer = LoadModel()
+        self.reranker = Reranker(config_path=config_path)
 
     def query_knowledge(self, query_text, top_k=3):
         query_vector = encode_text(self.model, self.tokenizer, query_text)
 
         # 执行FAISS查询
-        D, I = self.loaded_index.search(np.array(query_vector, dtype=np.float32), k=30)
+        D, I = self.loaded_index.search(np.array(query_vector, dtype=np.float32), k=min(30, self.loaded_index.ntotal))
 
         knowledges = []
         for i in I[0]:
+            if i < 0 or i >= len(self.loaded_ids):
+                continue
             entity_id = self.loaded_ids[i]
             entity = self.fetcher.get_entity_by_id(entity_id)
+            if not entity:
+                continue
             knowledge = self._extract_entity_knowledge(entity)
             knowledges.append(knowledge)
-        reranker = Reranker()
-        knowledges = reranker.rerank(query_text, knowledges, top_k)
+        if not knowledges:
+            return []
+        knowledges = self.reranker.rerank(query_text, knowledges, top_k)
         knowledges = [item[0] for item in knowledges]
-        return knowledges[::-1]
+        return knowledges
 
     def _extract_entity_knowledge(self, entity):
         knowledge = ''

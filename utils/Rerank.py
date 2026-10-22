@@ -56,8 +56,7 @@ class Reranker:
         )
 
         # 将输入移动到 GPU（如果可用）
-        if torch.cuda.is_available():
-            inputs = {key: value.cuda() for key, value in inputs.items()}
+        inputs = {key: value.to(self.model.device) for key, value in inputs.items()}
 
         # 模型推理
         with torch.no_grad():

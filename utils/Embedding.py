@@ -30,7 +30,7 @@ def encode_text(model, tokenizer, text, max_length=512):
 
     with torch.no_grad():
         outputs = model(**inputs)
-        embeddings = outputs.last_hidden_state.mean(dim=1).cpu().tolist()
+        embeddings = torch.nn.functional.normalize(outputs.last_hidden_state[:, 0], p=2, dim=1).cpu().tolist()
     return embeddings
 
 

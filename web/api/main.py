@@ -7,6 +7,8 @@ from medigraph.llm import ModelClient, ModelError
 from medigraph.storage import Database
 from medigraph.documents import DocumentStore, DocumentError
 from medigraph.document_routes import routes as document_routes
+from medigraph.retrieval import Retriever
+from medigraph.retrieval_routes import routes as retrieval_routes
 
 
 def create_app(data_dir=None):
@@ -17,6 +19,8 @@ def create_app(data_dir=None):
     app.state.db = Database(app.state.settings.directory)
     app.state.documents = DocumentStore(app.state.db)
     app.include_router(document_routes(app.state.documents))
+    app.state.retriever = Retriever(app.state.db, app.state.settings)
+    app.include_router(retrieval_routes(app.state.retriever, app.state.model))
 
     @app.exception_handler(DocumentError)
     async def document_error(request: Request, error: DocumentError):

@@ -66,7 +66,7 @@ class Neo4jEntityFetcher:
             entity = [
                 {
                     "key": dict(record["n"])['name'],
-                    "id": record["m"].element_id[0],
+                    "id": record["m"].element_id,
                     "labels": list(record["m"].labels)[0],
                     "properties": dict(record["m"])['name'],
                     "relationship": {
