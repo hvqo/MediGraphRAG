@@ -6,7 +6,7 @@ neo4j:
   password: password
 
 base:
-  dir: /home/lin/work/code/DeepLearning/LLM/Medical
+  dir: .
 
 save:
   dir: data

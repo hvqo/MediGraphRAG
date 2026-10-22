@@ -1,5 +1,12 @@
 .*
 !.gitignore
+!.env.example
+environment-check.json
+environment-packages.json
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+web/frontend/dist/
 **/__pycache__/
 data/faiss_index/faiss_index.index
 data/faiss_index/matedata.npy
