@@ -9,10 +9,18 @@ from medigraph.documents import DocumentStore, DocumentError
 from medigraph.document_routes import routes as document_routes
 from medigraph.retrieval import Retriever
 from medigraph.retrieval_routes import routes as retrieval_routes
+from medigraph.questions import QuestionStore, GenerationJobs
+from medigraph.question_routes import routes as question_routes
+from contextlib import asynccontextmanager
 
 
 def create_app(data_dir=None):
-    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.2.0")
+    @asynccontextmanager
+    async def lifespan(application):
+        application.state.jobs.recover()
+        yield
+        await application.state.jobs.shutdown()
+    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.2.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","), allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
     app.state.settings = SettingsStore(data_dir)
     app.state.model = ModelClient(app.state.settings)
@@ -21,6 +29,9 @@ def create_app(data_dir=None):
     app.include_router(document_routes(app.state.documents))
     app.state.retriever = Retriever(app.state.db, app.state.settings)
     app.include_router(retrieval_routes(app.state.retriever, app.state.model))
+    app.state.questions = QuestionStore(app.state.db)
+    app.state.jobs = GenerationJobs(app.state.questions, app.state.retriever, app.state.model)
+    app.include_router(question_routes(app.state.questions, app.state.jobs))
 
     @app.exception_handler(DocumentError)
     async def document_error(request: Request, error: DocumentError):

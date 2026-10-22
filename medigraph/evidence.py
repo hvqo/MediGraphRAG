@@ -43,6 +43,7 @@ SYSTEM = '''你是医学教育资料助手。只依据提供的原文回答或�
 
 
 async def answer_question(model, query, result):
+    model = model.snapshot() if hasattr(model, 'snapshot') else model
     evidence = result['items']
     if not evidence:
         return {'status': 'insufficient_evidence', 'blocks': [], 'evidence': [], **{key: result[key] for key in ['mode', 'warnings']}}

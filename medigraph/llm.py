@@ -13,6 +13,12 @@ class ModelClient:
     def _headers(self):
         return {'Authorization': 'Bearer ' + self.store.key()}
 
+    def snapshot(self):
+        from types import SimpleNamespace
+        with self.store.lock:
+            settings, key = self.store.get(), self.store.key()
+        return ModelClient(SimpleNamespace(get=lambda: settings, key=lambda: key))
+
     async def check(self):
         settings = self.store.get()
         try:
