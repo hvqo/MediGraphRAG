@@ -1,4 +1,5 @@
 import asyncio
+import json
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -25,6 +26,12 @@ class RetrievalTests(unittest.TestCase):
             client.post('/documents/text', json={'title': '索引测试', 'text': '糖尿病索引测试'})
             self.assertEqual(client.post('/indexes/build').status_code, 200)
             self.assertTrue(client.get('/indexes/status').json()['ready'])
+            retriever = client.app.state.retriever
+            metadata = json.loads(retriever.meta_path.read_text(encoding='utf-8'))
+            metadata['model_signature'] = 'changed-model'
+            retriever.meta_path.write_text(json.dumps(metadata), encoding='utf-8')
+            self.assertFalse(client.get('/indexes/status').json()['ready'])
+            self.assertEqual(client.post('/indexes/build').status_code, 200)
             client.post('/documents/text', json={'title': '新资料', 'text': '高血压索引测试'})
             self.assertFalse(client.get('/indexes/status').json()['ready'])
 

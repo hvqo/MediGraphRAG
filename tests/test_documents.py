@@ -7,6 +7,29 @@ from web.api.main import create_app
 
 
 class DocumentTests(unittest.TestCase):
+    def test_pdf_preserves_page_number_and_warns_about_blank_page(self):
+        from pypdf import PdfWriter
+        from pypdf.generic import NameObject, DictionaryObject, DecodedStreamObject
+        stream = io.BytesIO()
+        writer = PdfWriter()
+        writer.add_blank_page(300, 300)
+        page = writer.add_blank_page(300, 300)
+        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'), NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+        page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'): DictionaryObject({NameObject('/F1'): font})})
+        content = DecodedStreamObject()
+        content.set_data(b'BT /F1 12 Tf 20 200 Td (Medical software fixture.) Tj ET')
+        page[NameObject('/Contents')] = content
+        writer.write(stream)
+        with tempfile.TemporaryDirectory() as directory:
+            client = TestClient(create_app(directory))
+            result = client.post('/documents/upload', files={'file': ('fixture.pdf', stream.getvalue())})
+            self.assertEqual(result.status_code, 201)
+            self.assertEqual(result.json()['pages'], 2)
+            self.assertEqual(len(result.json()['warnings']), 1)
+            detail = client.get('/documents/' + result.json()['id']).json()
+            self.assertEqual(detail['chunks'][0]['page'], 2)
+            self.assertIn('Medical software fixture.', detail['chunks'][0]['text'])
+
     def test_import_duplicate_provenance_and_delete(self):
         with tempfile.TemporaryDirectory() as directory:
             client = TestClient(create_app(directory))

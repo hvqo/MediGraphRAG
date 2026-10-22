@@ -1,19 +1,4 @@
-langchain
-langchain-community==0.3.1
-
-pandas
-tqdm
-
-gensim
-transformers
-
-redis
-neo4j
-faiss-gpu
-yaml
-pyyaml
-numpy
-
-metagpt
-
-fastapi
+# Default installation for the refactored application.
+-r requirements-runtime.txt
+# Optional semantic retrieval: requirements-retrieval.txt
+# Full Windows/legacy environment: requirements-windows.txt

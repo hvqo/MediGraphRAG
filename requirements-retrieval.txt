@@ -1,0 +1,6 @@
+# Optional semantic retrieval; install a compatible torch wheel separately.
+numpy==1.26.4
+faiss-cpu==1.7.4
+transformers==4.46.3
+sentencepiece==0.2.0
+PyYAML==6.0.1

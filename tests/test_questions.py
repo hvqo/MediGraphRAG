@@ -3,6 +3,7 @@ import time
 import unittest
 from fastapi.testclient import TestClient
 from medigraph.storage import now
+from medigraph.questions import Question
 from web.api.main import create_app
 
 
@@ -23,6 +24,11 @@ def wait_job(client, identifier):
 
 
 class QuestionTests(unittest.TestCase):
+    def test_placeholder_stem_is_rejected(self):
+        with self.assertRaises(ValueError):
+            Question(topic='题干', options=dict(zip('ABCD', ['甲', '乙', '丙', '丁'])), answer=['A'], analysis='测试解析内容',
+                     citations=[{'evidence_id': 'test', 'quote': '测试原文内容'}])
+
     def test_generation_review_edit_and_deleted_source(self):
         with tempfile.TemporaryDirectory() as directory, TestClient(create_app(directory)) as client:
             document = client.post('/documents/text', json={'title': '软件测试资料', 'text': '糖尿病与血糖用于检索测试，本段并非医学知识依据。'}).json()
@@ -55,6 +61,7 @@ class QuestionTests(unittest.TestCase):
             client.app.state.jobs.model = FakeModel([{'topic': '缺少答案'}, {'topic': '仍缺少答案'}])
             job = client.post('/questions/generate', json={'query': '高血压'}).json()
             self.assertEqual(wait_job(client, job['id'])['status'], 'failed')
+            self.assertEqual(len(wait_job(client, job['id'])['result']['attempts']), 2)
             self.assertEqual(client.get('/questions').json(), [])
 
     def test_restart_marks_unfinished_job_interrupted(self):

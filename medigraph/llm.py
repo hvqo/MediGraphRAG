@@ -15,6 +15,8 @@ class ModelClient:
 
     def snapshot(self):
         from types import SimpleNamespace
+        if not hasattr(self.store, 'lock'):
+            return self
         with self.store.lock:
             settings, key = self.store.get(), self.store.key()
         return ModelClient(SimpleNamespace(get=lambda: settings, key=lambda: key))
@@ -35,7 +37,7 @@ class ModelClient:
                 response.raise_for_status()
                 return {'ok': True, 'message': '服务已连接；模型可调用性以实际生成结果为准',
                         'models': [item['id'] for item in response.json().get('data', [])]}
-        except (httpx.HTTPError, ValueError, KeyError):
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
             return {'ok': False, 'message': '无法连接模型服务，请检查地址、网络或凭据'}
 
     async def json(self, system, prompt):
@@ -70,5 +72,5 @@ class ModelClient:
             raise ModelError(f'模型服务返回 HTTP {exc.response.status_code}，请检查模型和配置') from None
         except httpx.HTTPError:
             raise ModelError('模型服务连接失败或超时，请检查服务状态') from None
-        except (ValueError, KeyError, TypeError):
+        except (ValueError, KeyError, TypeError, IndexError, AttributeError):
             raise ModelError('模型没有返回有效的结构化结果，请重试或更换模型') from None

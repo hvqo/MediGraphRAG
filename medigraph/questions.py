@@ -4,7 +4,7 @@ import logging
 from typing import Literal
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from starlette.concurrency import run_in_threadpool
 
 from .evidence import Citation, SYSTEM, compact, context, validate_citations
@@ -23,7 +23,7 @@ class GenerationRequest(BaseModel):
 
 class Question(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    topic: str = Field(min_length=1, max_length=3000)
+    topic: str = Field(min_length=8, max_length=3000, description='不少于8个字的完整具体题干，包含明确的问题，不是资料标题或占位符')
     options: dict[str, str]
     answer: list[str] = Field(min_length=1, max_length=4)
     analysis: str = Field(min_length=1, max_length=4000)
@@ -33,6 +33,9 @@ class Question(BaseModel):
 
     @model_validator(mode='after')
     def consistent(self):
+        placeholders = {'题干', '题目', '问题', '示例题干', '请填写题干', '答案和各选项解析', '答案解析', '解析'}
+        if compact(self.topic) in placeholders or compact(self.analysis) in placeholders:
+            raise ValueError('题干和解析必须是实际内容，不能是格式占位文字')
         if set(self.options) != set('ABCD') or any(not value.strip() for value in self.options.values()):
             raise ValueError('选项必须为非空的 A、B、C、D')
         if len({compact(value).casefold() for value in self.options.values()}) != 4:
@@ -84,8 +87,10 @@ class QuestionStore:
     def list_jobs(self):
         return [self.job(row['id']) for row in self.db.rows('SELECT id FROM jobs ORDER BY created_at DESC LIMIT 30')]
 
-    def list(self):
-        return [self.get(row['id']) for row in self.db.rows('SELECT id FROM questions ORDER BY created_at DESC LIMIT 500')]
+    def list(self, limit=500):
+        query = 'SELECT id FROM questions ORDER BY created_at DESC'
+        rows = self.db.rows(query + ' LIMIT ?', (limit,)) if limit else self.db.rows(query)
+        return [self.get(row['id']) for row in rows]
 
     def evidence(self, question):
         ids = list({item.evidence_id for item in question.citations})
@@ -145,6 +150,7 @@ class GenerationJobs:
     def __init__(self, store, retriever, model):
         self.store, self.retriever, self.model = store, retriever, model
         self.tasks = set()
+        self.semaphore = asyncio.Semaphore(1)
 
     def recover(self):
         with self.store.db.connect() as connection:
@@ -166,7 +172,12 @@ class GenerationJobs:
         await asyncio.gather(*self.tasks, return_exceptions=True)
 
     async def run(self, identifier, request):
+        async with self.semaphore:
+            await self._run(identifier, request)
+
+    async def _run(self, identifier, request):
         saved = []
+        attempts = []
         model = self.model.snapshot() if hasattr(self.model, 'snapshot') else self.model
         try:
             self.store.update_job(identifier, status='running', stage='检索原文依据', progress=5)
@@ -179,12 +190,13 @@ class GenerationJobs:
                 for attempt in range(2):
                     self.store.update_job(identifier, stage=f'生成并核验第 {number + 1}/{request.count} 题（尝试 {attempt + 1}）', progress=10 + int(80 * number / request.count))
                     try:
-                        raw = await model.json(SYSTEM, f'考点：{request.query}\n题型：{request.question_type}；难度：{request.difficulty}。'
-                            f'请生成一道不同于已生成题目的医学练习题。已生成题干：{[self.store.get(q)["content"]["topic"] for q in saved]}\n'
-                            f'资料：{context(evidence)}\n只输出一个对象：'
-                            '{"topic":"题干","options":{"A":"选项","B":"选项","C":"选项","D":"选项"},'
-                            '"answer":["A"],"analysis":"答案和各选项解析","citations":[{"evidence_id":"ID","quote":"原文短句"}],'
-                            f'"question_type":"{request.question_type}","difficulty":"{request.difficulty}"}}。'
+                        raw = await model.json(SYSTEM, f'上次未通过的原因：{last_error or "无"}。如有错误，请严格修正。\n考点：{request.query}\n题型：{request.question_type}；难度：{request.difficulty}。'
+                            f'请生成一道不同于已生成题目的医学练习题。必须写出完整具体的问题；不能把格式示例中的“题干”“选项”“答案和各选项解析”当成实际内容。已生成题干：{[self.store.get(q)["content"]["topic"] for q in saved]}\n'
+                            f'资料：{context(evidence)}\n只输出一个实际题目对象。topic 必须是完整具体的问题，不能是资料名称。'
+                            'options 为四个实际选项；answer 是正确选项字母数组；analysis 说明答案及各干扰项。'
+                            'citations 引用提供的片段 ID 并逐字复制支持答案的原文短句。'
+                            f'question_type 必须为 {request.question_type}，difficulty 必须为 {request.difficulty}。'
+                            f'输出结构遵循：{json.dumps(Question.model_json_schema(), ensure_ascii=False)}。'
                             'single_choice 和 case 只有一个正确答案，multiple_choice 至少两个。case 使用病例情境；病例中的虚构细节不能引入无依据的医学结论。')
                         question = Question.model_validate(raw)
                         if question.question_type != request.question_type or question.difficulty != request.difficulty:
@@ -197,13 +209,25 @@ class GenerationJobs:
                             '资料不足或不相关时拒绝。输出 {"supported":true或false,"answer_valid":true或false,"ambiguous":true或false,"reason":"原因"}。\n'
                             f'资料：{context(evidence)}\n题目：{question.model_dump_json()}')
                         if review.get('supported') is not True or review.get('answer_valid') is not True or review.get('ambiguous') is not False:
-                            raise ValueError('模型复核未通过')
+                            raise ValueError('模型复核未通过：' + str(review.get('reason', '依据或答案存在问题'))[:400])
                         saved.append(self.store.save(question, identifier))
-                        self.store.update_job(identifier, result=json.dumps({'question_ids': saved, 'requested': request.count}))
+                        attempts.append({'question': number + 1, 'attempt': attempt + 1, 'outcome': 'passed'})
+                        self.store.update_job(identifier, result=json.dumps({'question_ids': saved, 'requested': request.count, 'attempts': attempts}))
                         last_error = None
                         break
                     except (ValueError, ModelError) as error:
-                        last_error = str(error) if isinstance(error, ModelError) else '题目未通过结构、引用或答案复核'
+                        if isinstance(error, ValidationError):
+                            fields = {'topic': '题干', 'options': '选项', 'answer': '答案', 'analysis': '解析',
+                                      'citations': '原文引用', 'question_type': '题型', 'difficulty': '难度'}
+                            reasons = {'missing': '缺少必要内容', 'string_too_short': '内容过短或不完整',
+                                       'too_short': '数量不足', 'literal_error': '不符合指定要求',
+                                       'list_type': '应为列表格式', 'extra_forbidden': '包含未定义字段'}
+                            last_error = '；'.join(fields.get(str(item['loc'][0]) if item['loc'] else '', '题目') + '：' +
+                                reasons.get(item['type'], '格式或内容不符合要求') for item in error.errors(include_input=False))[:800]
+                        else:
+                            last_error = str(error)[:800]
+                        attempts.append({'question': number + 1, 'attempt': attempt + 1, 'outcome': 'rejected', 'reason': last_error})
+                        self.store.update_job(identifier, result=json.dumps({'question_ids': saved, 'requested': request.count, 'attempts': attempts}))
                 if last_error:
                     raise ModelError(last_error)
             self.store.update_job(identifier, status='completed', stage='生成完成，等待人工审题', progress=100)
@@ -214,4 +238,4 @@ class GenerationJobs:
             message = str(error) if isinstance(error, ModelError) else '生成失败，请检查资料和模型配置'
             logger.warning('Question job failed: %s', identifier)
             self.store.update_job(identifier, status='failed', stage='生成失败', error=f'{message}；已保存 {len(saved)}/{request.count} 道待审题',
-                                  result=json.dumps({'question_ids': saved, 'requested': request.count}))
+                                  result=json.dumps({'question_ids': saved, 'requested': request.count, 'attempts': attempts}))

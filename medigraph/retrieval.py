@@ -26,6 +26,15 @@ def revision(chunks):
     return hashlib.sha256('\n'.join(sorted(item['id'] for item in chunks)).encode()).hexdigest()
 
 
+def model_signature(directory):
+    files = []
+    for pattern in ['*.json', '*.safetensors', '*.bin', '*.model', 'vocab.txt']:
+        for path in sorted(directory.glob(pattern)):
+            stat = path.stat()
+            files.append((path.name, stat.st_size, stat.st_mtime_ns))
+    return hashlib.sha256(repr(('normalized_cls_v1', files)).encode()).hexdigest()
+
+
 @lru_cache(maxsize=1)
 def glossary():
     terms = {'糖尿病': '疾病', '高血压': '疾病', '心肌梗死': '疾病', '肺炎': '疾病',
@@ -54,7 +63,7 @@ def entities(text, limit=20):
 
 
 @lru_cache(maxsize=2)
-def encoder(path, device):
+def encoder(path, device, signature):
     from transformers import AutoModel, AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(path, local_files_only=True)
     model = AutoModel.from_pretrained(path, local_files_only=True).to(device).eval()
@@ -62,7 +71,7 @@ def encoder(path, device):
 
 
 @lru_cache(maxsize=1)
-def reranker(path, device):
+def reranker(path, device, signature):
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(path, local_files_only=True)
     model = AutoModelForSequenceClassification.from_pretrained(path, local_files_only=True).to(device).eval()
@@ -73,7 +82,7 @@ def embed(texts, device):
     import numpy as np
     import torch
     path, _ = model_paths()
-    tokenizer, model = encoder(str(path), device)
+    tokenizer, model = encoder(str(path), device, model_signature(path))
     batches = []
     for start in range(0, len(texts), 16):
         inputs = tokenizer(texts[start:start + 16], padding=True, truncation=True, max_length=512, return_tensors='pt').to(model.device)
@@ -96,7 +105,9 @@ class Retriever:
             return {'ready': False, 'message': '尚未建立向量索引'}
         try:
             metadata = json.loads(self.meta_path.read_text(encoding='utf-8'))
-            ready = metadata['revision'] == revision(self.db.chunks()) and metadata.get('embedding_path') == str(model_paths()[0])
+            path = model_paths()[0]
+            ready = (metadata['revision'] == revision(self.db.chunks()) and metadata.get('embedding_path') == str(path)
+                     and metadata.get('model_signature') == model_signature(path))
             return {'ready': ready, 'count': len(metadata['ids']), 'message': '索引可用' if ready else '资料或模型路径已变化，请重建索引'}
         except (ValueError, KeyError):
             return {'ready': False, 'message': '索引元数据无效，请重建'}
@@ -114,7 +125,7 @@ class Retriever:
             faiss.write_index(index, temporary)
             Path(temporary).replace(self.index_path)
             meta = {'revision': revision(chunks), 'ids': [item['id'] for item in chunks],
-                    'embedding_path': str(model_paths()[0]), 'pooling': 'normalized_cls_v1'}
+                    'embedding_path': str(model_paths()[0]), 'model_signature': model_signature(model_paths()[0]), 'pooling': 'normalized_cls_v1'}
             temporary_meta = self.meta_path.with_suffix('.tmp')
             temporary_meta.write_text(json.dumps(meta), encoding='utf-8')
             temporary_meta.replace(self.meta_path)
@@ -176,7 +187,7 @@ class Retriever:
                             number = lookup[metadata['ids'][position]]
                             ranks[number] = ranks.get(number, 0) + 1 / (60 + rank)
                     modes.append('vector')
-                except (OSError, RuntimeError, ValueError):
+                except (ImportError, OSError, RuntimeError, ValueError):
                     warnings.append('向量检索不可用；本次使用关键词检索')
         selected = sorted(ranks, key=lambda number: ranks[number], reverse=True)[:20]
         if config.use_reranker and selected:
@@ -184,14 +195,14 @@ class Retriever:
                 import torch
                 _, path = model_paths()
                 with self.lock:
-                    tokenizer, model = reranker(str(path), config.device)
+                    tokenizer, model = reranker(str(path), config.device, model_signature(path))
                     inputs = tokenizer([[query, chunks[number]['text']] for number in selected], padding=True,
                                        truncation=True, max_length=512, return_tensors='pt').to(model.device)
                     with torch.inference_mode():
                         values = model(**inputs).logits.reshape(-1).cpu().tolist()
                 selected = [number for number, _ in sorted(zip(selected, values), key=lambda item: item[1], reverse=True)]
                 modes.append('reranker')
-            except (OSError, RuntimeError, ValueError):
+            except (ImportError, OSError, RuntimeError, ValueError):
                 warnings.append('重排模型不可用；保留融合检索顺序')
         return {'items': [{**chunks[number], 'score': round(ranks[number], 6)} for number in selected[:top_k]],
                 'mode': '+'.join(modes), 'warnings': warnings}

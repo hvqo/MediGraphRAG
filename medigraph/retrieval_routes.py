@@ -24,7 +24,13 @@ def routes(retriever, model):
     @router.post('/ask')
     async def ask(value: Query):
         result = await run_in_threadpool(retriever.search, value.query, value.top_k)
-        return await answer_question(model, value.query, result)
+        answer = await answer_question(model, value.query, result)
+        if answer['status'] == 'draft':
+            cited = {citation['evidence_id'] for block in answer['blocks'] for citation in block['citations']}
+            current = {row['id'] for row in retriever.db.rows('SELECT id FROM chunks')}
+            if not cited <= current:
+                raise HTTPException(409, '回答生成期间原文资料已变化，请重新提问')
+        return answer
 
     @router.get('/indexes/status')
     def index_status():
@@ -34,7 +40,7 @@ def routes(retriever, model):
     async def build_index():
         try:
             return await run_in_threadpool(retriever.build)
-        except (ValueError, OSError, RuntimeError):
+        except (ImportError, ValueError, OSError, RuntimeError):
             raise HTTPException(422, '索引构建失败：请先导入资料，并确认 BGE 权重和分词器完整、设备可用') from None
 
     @router.post('/graph/search')

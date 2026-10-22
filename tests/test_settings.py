@@ -9,6 +9,7 @@ class SettingsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             client = TestClient(create_app(directory))
             self.assertEqual(client.get('/health').status_code, 200)
+            self.assertEqual(client.get('/api/health').status_code, 200)
             payload = client.get('/settings').json()
             payload.pop('cloud_api_key_configured')
             payload.pop('cloud_api_key_from_environment')

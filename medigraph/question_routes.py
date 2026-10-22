@@ -32,7 +32,7 @@ def routes(store, jobs):
     def export(format: str = 'json', approved_only: bool = True):
         if format not in ['json', 'csv']:
             raise HTTPException(422, '导出格式支持 json 或 csv')
-        rows = [row for row in store.list() if row['sources_valid'] and (not approved_only or row['status'] == 'approved')]
+        rows = [row for row in store.list(limit=None) if row['sources_valid'] and (not approved_only or row['status'] == 'approved')]
         if format == 'json':
             content = json.dumps([{'id': row['id'], 'status': row['status'], 'question': row['content'],
                                    'sources': [{'id': e['id'], 'document_id': e['document_id'], 'title': e['title'], 'location': e['location']} for e in row['evidence']]}
@@ -56,6 +56,13 @@ def routes(store, jobs):
         try:
             store.get(identifier)
             return store.db.rows('SELECT action,detail,created_at FROM question_events WHERE question_id=? ORDER BY id', (identifier,))
+        except KeyError:
+            raise HTTPException(404, '题目不存在')
+
+    @router.get('/questions/{identifier}')
+    def detail(identifier: str):
+        try:
+            return store.get(identifier)
         except KeyError:
             raise HTTPException(404, '题目不存在')
 

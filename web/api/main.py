@@ -1,8 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import os
 from medigraph.config import SettingsStore, SettingsUpdate, model_paths
+from medigraph.config import ROOT
 from medigraph.llm import ModelClient, ModelError
 from medigraph.storage import Database
 from medigraph.documents import DocumentStore, DocumentError
@@ -32,6 +35,23 @@ def create_app(data_dir=None):
     app.state.questions = QuestionStore(app.state.db)
     app.state.jobs = GenerationJobs(app.state.questions, app.state.retriever, app.state.model)
     app.include_router(question_routes(app.state.questions, app.state.jobs))
+
+    @app.middleware('http')
+    async def api_alias(request, call_next):
+        if request.scope['path'].startswith('/api/'):
+            request.scope['path'] = request.scope['path'][4:]
+            request.scope['raw_path'] = request.scope['path'].encode('utf-8')
+        return await call_next(request)
+
+    frontend = ROOT / 'web/frontend/dist'
+    if (frontend / 'assets').exists():
+        app.mount('/assets', StaticFiles(directory=frontend / 'assets'), name='assets')
+
+    @app.get('/', include_in_schema=False)
+    def homepage():
+        if (frontend / 'index.html').exists():
+            return FileResponse(frontend / 'index.html')
+        return JSONResponse({'detail': '请先构建前端：cd web/frontend，然后运行 npm ci 和 npm run build'}, status_code=503)
 
     @app.exception_handler(DocumentError)
     async def document_error(request: Request, error: DocumentError):
