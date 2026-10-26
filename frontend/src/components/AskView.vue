@@ -2,8 +2,10 @@
 import { ref } from "vue";
 import { send } from "../api";
 import EvidenceList from "./EvidenceList.vue";
+import { useWorkspace } from "../stores/workspace";
+const workspace = useWorkspace();
 const query = ref(""),
-  mode = ref("hybrid"),
+  mode = ref("auto"),
   result = ref(null),
   answer = ref(null),
   busy = ref(false),
@@ -14,12 +16,14 @@ async function run(generate) {
   error.value = "";
   answer.value = null;
   try {
-    result.value = await send("/search", {
-      query: query.value,
-      mode: mode.value,
-    });
-    if (generate)
+    if (generate) {
       answer.value = await send("/ask", {
+        query: query.value,
+        mode: mode.value,
+      });
+      result.value = answer.value.retrieval;
+    } else
+      result.value = await send("/search", {
         query: query.value,
         mode: mode.value,
       });
@@ -41,12 +45,6 @@ async function run(generate) {
     <span class="pill">医学学习与研究</span>
   </section>
   <form class="question-bar" @submit.prevent="run(true)">
-    <select v-model="mode" aria-label="检索方式">
-      <option value="hybrid">融合检索</option>
-      <option value="keyword">关键词</option>
-      <option value="vector">仅向量</option>
-      <option value="graph">已审核关系</option>
-    </select>
     <label class="sr-only" for="medical-query">医学问题</label
     ><input
       id="medical-query"
@@ -54,17 +52,50 @@ async function run(generate) {
       placeholder="输入医学概念、知识点或学习问题…"
       maxlength="1000"
       required
-    /><button
-      type="button"
-      class="secondary"
-      :disabled="busy || !query.trim()"
-      @click="run(false)"
-    >
-      只查原文</button
-    ><button class="primary" :disabled="busy || !query.trim()">
+    /><button class="primary" :disabled="busy || !query.trim()">
       {{ busy ? "正在处理…" : "依据问答 →" }}
     </button>
   </form>
+  <p v-if="!workspace.summary.documents" class="notice">
+    还没有资料。<RouterLink :to="{ name: 'documents' }"
+      >添加第一份资料</RouterLink
+    >，之后输入问题即可；系统自动选择检索路径。
+  </p>
+  <details class="query-options section-gap">
+    <summary>检索选项与原文搜索</summary>
+    <div class="inline">
+      <label
+        >检索方式<select v-model="mode" aria-label="检索方式">
+          <option value="auto">自动判断（推荐）</option>
+          <option value="keyword">仅关键词</option>
+          <option value="vector">仅向量</option>
+          <option value="graph">仅审核关系</option>
+          <option value="hybrid">固定融合</option>
+        </select></label
+      ><button
+        type="button"
+        class="secondary"
+        :disabled="busy || !query.trim()"
+        @click="run(false)"
+      >
+        只查原文
+      </button>
+    </div>
+    <p class="help">
+      普通查询先快速检索；关系或比较问题尝试补充已审核路径。没有可用图谱时保留文本依据。
+    </p>
+  </details>
+  <div v-if="result?.routing" class="help">
+    {{
+      result.routing.selected === "deep" ? "已补充关系依据" : "已使用快速检索"
+    }}
+    <details>
+      <summary>查看检索依据</summary>
+      {{ result.routing.reason }}
+      <p>本次检索 {{ result.elapsed_ms }} 毫秒，不含生成与审题耗时。</p>
+      <p v-if="result.routing.fallback">{{ result.routing.fallback }}</p>
+    </details>
+  </div>
   <p v-if="error" role="alert" class="notice error">{{ error }}</p>
   <div class="answer-layout section-gap">
     <section class="panel answer-panel">
@@ -132,6 +163,7 @@ async function run(generate) {
                   cooccurrence: "概念共现",
                   vector: "语义向量",
                   reranker: "重排序",
+                  reviewed_relations: "已审核关系",
                 })[part] || part,
             )
             .join(" · ")

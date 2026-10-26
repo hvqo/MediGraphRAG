@@ -12,6 +12,27 @@
   overflow-y: auto;
   min-height: 0;
 }
+.tool-menu {
+  min-height: 0;
+  overflow: auto;
+  margin-top: 12px;
+}
+.tool-menu > summary {
+  color: #6b8386;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.query-options {
+  padding: 12px 0;
+  color: #637f81;
+}
+.query-options .inline {
+  margin-top: 12px;
+}
+.question-bar input {
+  min-width: 0;
+  flex: 1;
+}
 .reader-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);

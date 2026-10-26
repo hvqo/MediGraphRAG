@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
-import { navigation } from "./router";
+import { navigation, primaryNavigation, moreNavigation } from "./router";
 import { useWorkspace } from "./stores/workspace";
 const route = useRoute(),
   router = useRouter(),
@@ -13,6 +13,15 @@ const active = computed(
   () => navigation.find((item) => item.id === view.value) || navigation[0],
 );
 const pending = computed(() => summary.value.pending);
+const moreOpen = ref(false);
+watch(
+  () => route.name,
+  (name) => {
+    if (name !== "reader" && moreNavigation.some((item) => item.id === name))
+      moreOpen.value = true;
+  },
+  { immediate: true },
+);
 const refresh = () => workspace.refresh();
 function navigate(id: string) {
   if (router.hasRoute(id)) router.push({ name: id });
@@ -45,7 +54,7 @@ onMounted(refresh);
       <p class="nav-caption">工作空间</p>
       <nav aria-label="主导航">
         <button
-          v-for="item in navigation"
+          v-for="item in primaryNavigation"
           :key="item.id"
           :class="{ active: view === item.id }"
           :aria-current="view === item.id ? 'page' : undefined"
@@ -61,6 +70,31 @@ onMounted(refresh);
           >
         </button>
       </nav>
+      <details
+        class="tool-menu"
+        :open="moreOpen"
+        @toggle="moreOpen = ($event.target as HTMLDetailsElement).open"
+      >
+        <summary>更多工具</summary>
+        <nav aria-label="教学与管理工具">
+          <button
+            v-for="item in moreNavigation"
+            :key="item.id"
+            :class="{ active: view === item.id }"
+            :aria-current="view === item.id ? 'page' : undefined"
+            @click="navigate(item.id)"
+          >
+            <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span
+            >{{ item.label
+            }}<span
+              v-if="item.id === 'bank' && pending"
+              class="nav-count"
+              aria-hidden="true"
+              >{{ pending }}</span
+            >
+          </button>
+        </nav>
+      </details>
       <div class="sidebar-bottom">
         <span class="status-dot" :class="{ offline: !status }"></span
         >{{ status ? "服务已连接" : "等待服务连接"

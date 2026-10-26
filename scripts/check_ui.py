@@ -53,6 +53,8 @@ with httpx.Client(base_url=base, timeout=30, trust_env=False) as client:
             page.goto(base)
             expect(page.get_by_role("heading", name="从原文出发，理解医学知识")).to_be_visible()
             page.get_by_label("医学问题").fill("糖尿病")
+            page.get_by_text("检索选项与原文搜索", exact=True).click()
+            page.get_by_text("更多工具", exact=True).click()
             page.get_by_role("button", name="只查原文").click()
             expect(page.get_by_text("界面验收测试资料（非医学知识）", exact=True)).to_be_visible()
             page.screenshot(path=str(folder / "ask-desktop.png"), full_page=True)

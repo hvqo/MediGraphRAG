@@ -1,8 +1,11 @@
 # V2 使用与验收说明
 
-当前版本：0.4.0。代码仍在 `refactor/medigraphrag`。main 已按用户授权同步源码整理基线
+当前版本：0.5.0。代码仍在 `refactor/medigraphrag`。main 已按用户授权同步源码整理基线
 `46ae84a`，随后外部合并 PR #2 后远端提交为 `e30e2dd`，只增加进度文档。
 原 main 已备份到 `backup/main-before-refactor-20261027`；本轮 V2 不再推送 main。
+
+0.5.0 补充规则自动路由与四项常用导航，其余功能从“更多工具”打开；检索方式放入折叠选项。
+详见 `ADAPTIVE_RAG_DESIGN.md`，新的公开检索对照见 `RETRIEVAL_EVALUATION.md`。
 
 ## 推荐使用顺序
 
@@ -75,7 +78,7 @@ npm run build
 本轮启动服务时设置了进程环境 `OLLAMA_MODELS=E:\`，未重复下载模型、未改系统永久环境变量。
 以后自行重启 Ollama 时需使用对应模型目录，或在设置中填写该服务可见的准确模型名称。
 
-## 中文软件验收对照记录
+## 0.4.0 中文软件冒烟记录（历史）
 
 `docs/evaluation-seed.json` 包含3份自定义非临床标签文本、3个中文查询，所有预期证据来自该文本。
 本轮实跑 `scripts/benchmark_retrieval.py`，返回前5条时：
@@ -89,6 +92,8 @@ npm run build
 
 这只是小型功能对照，不能证明某种方法优于另一种方法，也不衡量中文医学问答质量。
 原始报告保存在本机 `.runtime/retrieval-benchmark.json`，不向 GitHub 上传运行资料。
+0.5.0 已补充48份文本/20个查询的功能对照，以及499份历史文本/80个查询的弱标注查找；
+完整可公开数据和结果在 `benchmarks/results`。旧3样例不再用作方案选择依据。
 
 PDF 文字层样式摘自 Mozilla pdfjs-dist 6.4.299，仅引入该组件需要的部分，
 版权和 Apache 2.0 许可见 `licenses/pdfjs-dist-LICENSE.txt`。

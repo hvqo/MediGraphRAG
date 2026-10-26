@@ -30,8 +30,8 @@ class HumanReview(BaseModel):
 
 
 class Run(BaseModel):
-    modes: list[Literal["keyword", "vector", "graph", "hybrid"]] = Field(
-        default_factory=lambda: ["keyword", "graph", "hybrid"], min_length=1, max_length=4
+    modes: list[Literal["auto", "keyword", "vector", "graph", "hybrid"]] = Field(
+        default_factory=lambda: ["auto", "keyword", "graph", "hybrid"], min_length=1, max_length=5
     )
     top_k: int = Field(default=5, ge=1, le=10)
 
@@ -111,6 +111,7 @@ def routes(db, retriever, model):
                         "seconds": round(time.perf_counter() - start, 4),
                         "evidence": found["items"],
                         "warnings": found["warnings"],
+                        "routing": found.get("routing"),
                         "human_rating": None,
                     }
                 )

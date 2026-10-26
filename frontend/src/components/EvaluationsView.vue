@@ -57,7 +57,7 @@ const suites = ref<Suite[]>([]),
   ]),
   error = ref(""),
   busy = ref(false),
-  modes = ref(["keyword", "graph", "hybrid"]),
+  modes = ref(["auto", "keyword", "graph", "hybrid"]),
   message = ref(""),
   topK = ref(5),
   active = ref<Run | null>(null);
@@ -209,7 +209,7 @@ onActivated(() => load().catch((e) => (error.value = e.message)));
     <h2>运行对照</h2>
     <div class="inline">
       <label
-        v-for="mode in ['keyword', 'vector', 'graph', 'hybrid']"
+        v-for="mode in ['auto', 'keyword', 'vector', 'graph', 'hybrid']"
         :key="mode"
         class="check-label"
         ><input v-model="modes" type="checkbox" :value="mode" />{{

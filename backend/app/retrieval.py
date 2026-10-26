@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import threading
 import unicodedata
+import time
 
 from .config import ROOT, model_paths
 
@@ -170,7 +171,56 @@ class Retriever:
             temporary_meta.replace(self.meta_path)
             return {"ready": True, "count": len(chunks)}
 
-    def search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="hybrid"):
+    def search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="auto"):
+        started = time.perf_counter()
+        if mode != "auto":
+            result = self._search(query, top_k, document_id, evidence_ids, mode)
+        else:
+            from .routing import POLICY_VERSION, decide
+
+            selected, code, reason = decide(query)
+            result, attempted, graph_used, fallback, fast_ms = None, False, False, "", None
+
+            def deepen():
+                if not self.db.rows("SELECT id FROM relations WHERE status='approved' LIMIT 1"):
+                    return None, False, "尚无已审核关系，保留快速检索结果"
+                found = self._search(query, top_k, document_id, evidence_ids, "hybrid")
+                return (
+                    (found, True, "")
+                    if found["paths"]
+                    else (None, True, "未命中当前范围内的有效审核路径，保留快速检索结果")
+                )
+
+            # Clear relationship intent routes first, avoiding a second lexical/vector pass.
+            if selected == "deep":
+                result, attempted, fallback = deepen()
+                graph_used = result is not None
+            if result is None:
+                fast_start = time.perf_counter()
+                result = self._search(query, top_k, document_id, evidence_ids, "fast")
+                fast_ms = (time.perf_counter() - fast_start) * 1000
+                if selected == "fast" and not result["items"]:
+                    _, code, reason = decide(query, [])
+                    deep, attempted, fallback = deepen()
+                    if deep is not None:
+                        result, graph_used = deep, True
+            result["requested_mode"] = "auto"
+            result["routing"] = {
+                "policy": POLICY_VERSION,
+                "selected": "deep" if graph_used else "fast",
+                "reason_code": code,
+                "reason": reason,
+                "deep_attempted": attempted,
+                "graph_used": graph_used,
+                "fallback": fallback,
+                "fast_ms": round(fast_ms, 3) if fast_ms is not None else None,
+                "max_hops": 2,
+                "max_paths": 30,
+            }
+        result["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 3)
+        return result
+
+    def _search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="hybrid"):
         chunks = self.db.chunks()
         if document_id:
             chunks = [item for item in chunks if item["document_id"] == document_id]
@@ -206,14 +256,20 @@ class Retriever:
         lexical = sorted(scores, key=lambda item: item[1], reverse=True)[:30]
         ranks = (
             {index: 1 / (60 + rank) for rank, (index, _) in enumerate(lexical, 1)}
-            if mode in ("keyword", "hybrid")
+            if mode in ("keyword", "hybrid", "fast")
             else {}
         )
         modes, warnings = (
-            (["keyword"] if mode in ("keyword", "hybrid") else ["reviewed_relations"] if mode == "graph" else []),
+            (
+                ["keyword"]
+                if mode in ("keyword", "hybrid", "fast")
+                else ["reviewed_relations"]
+                if mode == "graph"
+                else []
+            ),
             [],
         )
-        seeds = entities(query, 5)
+        seeds = entities(query, 5) if mode == "hybrid" else []
         if seeds and mode == "hybrid":
             neighbors = Counter(
                 name for index, _ in lexical[:3] for name in entities(chunks[index]["text"]) if name not in seeds
@@ -230,6 +286,8 @@ class Retriever:
         from .relations import RelationStore
 
         paths = RelationStore(self.db).paths(query) if mode in ("graph", "hybrid") else []
+        allowed = {c["id"] for c in chunks}
+        paths = [path for path in paths if all(edge["evidence_id"] in allowed for edge in path)]
         if paths:
             supported_ids = {edge["evidence_id"] for path in paths for edge in path}
             for number, chunk in enumerate(chunks):
@@ -237,11 +295,11 @@ class Retriever:
                     ranks[number] = ranks.get(number, 0) + 1 / 61
             if "reviewed_relations" not in modes:
                 modes.append("reviewed_relations")
-        if mode == "vector" or (config.use_vectors and mode == "hybrid"):
+        if mode == "vector" or (config.use_vectors and mode in ("hybrid", "fast")):
             if not self.index_status()["ready"]:
                 warnings.append(
                     self.index_status()["message"]
-                    + ("；本次使用关键词检索" if mode == "hybrid" else "；未运行向量检索")
+                    + ("；本次使用关键词检索" if mode in ("hybrid", "fast") else "；未运行向量检索")
                 )
             else:
                 try:
@@ -264,7 +322,7 @@ class Retriever:
                             ranks[number] = ranks.get(number, 0) + 1 / (60 + rank)
                     modes.append("vector")
                 except (ImportError, OSError, RuntimeError, ValueError):
-                    warnings.append("向量检索不可用" + ("；本次使用关键词检索" if mode == "hybrid" else ""))
+                    warnings.append("向量检索不可用" + ("；本次使用关键词检索" if mode in ("hybrid", "fast") else ""))
         selected = sorted(ranks, key=lambda number: ranks[number], reverse=True)[:20]
         if config.use_reranker and selected and mode == "hybrid":
             try:

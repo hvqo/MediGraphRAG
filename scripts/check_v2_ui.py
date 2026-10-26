@@ -5,6 +5,7 @@ Does not change the user's saved provider, sources, question bank or learner sta
 """
 
 import json
+import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import sys
@@ -21,6 +22,14 @@ from backend.app.config import SettingsUpdate
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--capture-docs", action="store_true", help="Save screenshots of labelled software fixtures for README"
+    )
+    capture = parser.parse_args().capture_docs
+    images = Path(__file__).resolve().parents[1] / "docs/images"
+    if capture:
+        images.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as directory:
         app = create_app(directory)
         source = app.state.documents.add(
@@ -58,7 +67,19 @@ def main():
             def do_POST(self):
                 payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 prompt = payload["messages"][-1]["content"]
-                result = review if "独立审题环节" in prompt else question
+                if "核验以下回答" in prompt:
+                    result = {"supported": True, "reason": "软件界面验收桩"}
+                elif '输出格式：{"blocks"' in prompt:
+                    result = {
+                        "blocks": [
+                            {
+                                "text": "根据软件验收原文，测试标签甲关联测试标签乙。此为非临床演示。",
+                                "citations": [citation],
+                            }
+                        ]
+                    }
+                else:
+                    result = review if "独立审题环节" in prompt else question
                 output = json.dumps(
                     {
                         "message": {"content": json.dumps(result, ensure_ascii=False)},
@@ -96,6 +117,25 @@ def main():
                 page = browser.new_page(viewport={"width": 1440, "height": 1000})
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
+                requests = []
+                page.on(
+                    "request",
+                    lambda request: requests.append(request.url)
+                    if request.url.endswith(("/api/search", "/api/ask"))
+                    else None,
+                )
+                page.goto(base + "/#/ask")
+                expect(page.get_by_role("navigation", name="主导航").get_by_role("button")).to_have_count(4)
+                expect(page.get_by_role("button", name="只查原文", exact=True)).not_to_be_visible()
+                page.get_by_label("医学问题").fill("测试标签甲")
+                page.get_by_role("button", name="依据问答 →", exact=True).click()
+                expect(page.locator(".answer-body")).to_contain_text("根据软件验收原文")
+                assert sum(url.endswith("/api/ask") for url in requests) == 1 and not any(
+                    url.endswith("/api/search") for url in requests
+                ), requests
+                page.locator(".evidence-card summary").first.click()
+                if capture:
+                    page.screenshot(path=str(images / "workbench.png"), full_page=False)
                 page.goto(base + "/#/relations")
                 page.get_by_label("来源资料", exact=True).select_option(source["id"])
                 page.get_by_label("主体", exact=True).fill("测试标签甲")
@@ -137,6 +177,9 @@ def main():
                 expect(page.get_by_role("heading", name="B · 判断为干扰项")).to_be_visible()
                 page.get_by_role("button", name="审核通过", exact=True).click()
                 expect(page.locator("span.tag").filter(has_text="已通过")).to_be_visible()
+                if capture:
+                    page.evaluate("window.scrollTo(0,0)")
+                    page.screenshot(path=str(images / "question-review.png"), full_page=False)
 
                 page.get_by_role("button", name="练习与复习", exact=True).click()
                 page.get_by_label("本机学习档案").fill("隔离界面测试学习者")

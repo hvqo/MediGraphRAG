@@ -12,6 +12,7 @@
 *.json text eol=lf
 model/** linguist-vendored=true
 docs/** linguist-documentation=true
+benchmarks/** linguist-documentation=true
 data/** linguist-documentation=true
 # Preserve archived prompt strings and source cells exactly, including spaces.
 legacy/experiments/*.py whitespace=-blank-at-eol

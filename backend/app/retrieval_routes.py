@@ -11,7 +11,7 @@ class Query(BaseModel):
     top_k: int | None = Field(default=None, ge=1, le=10)
     document_id: str | None = None
     evidence_ids: list[str] = Field(default_factory=list, max_length=20)
-    mode: Literal["keyword", "vector", "graph", "hybrid"] = "hybrid"
+    mode: Literal["auto", "keyword", "vector", "graph", "hybrid"] = "auto"
 
 
 class GraphQuery(BaseModel):
@@ -31,6 +31,7 @@ def routes(retriever, model):
             retriever.search, value.query, value.top_k, value.document_id, value.evidence_ids, value.mode
         )
         answer = await answer_question(model, value.query, result)
+        answer["retrieval"] = result
         if answer["status"] == "draft":
             cited = {citation["evidence_id"] for block in answer["blocks"] for citation in block["citations"]}
             current = {row["id"] for row in retriever.db.chunks()}

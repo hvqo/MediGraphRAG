@@ -28,7 +28,7 @@ def create_app(data_dir=None):
         yield
         await application.state.jobs.shutdown()
 
-    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.4.0", lifespan=lifespan)
+    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.5.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","),

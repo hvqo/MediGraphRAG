@@ -13,6 +13,12 @@ export const navigation = [
   { id: "traces", label: "运行与回放", icon: "↺" },
   { id: "settings", label: "模型与设置", icon: "⚙" },
 ];
+export const primaryNavigation = ["ask", "documents", "generate", "study"].map(
+  (id) => navigation.find((item) => item.id === id)!,
+);
+export const moreNavigation = navigation.filter(
+  (item) => !primaryNavigation.some((primary) => primary.id === item.id),
+);
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
