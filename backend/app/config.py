@@ -23,6 +23,8 @@ class Settings(BaseModel):
     use_reranker: bool = False
     device: Literal['cpu', 'cuda'] = 'cpu'
     request_timeout: int = Field(default=180, ge=10, le=600)
+    review_provider: Literal['same', 'ollama', 'cloud'] = 'same'
+    review_model: str = Field(default='', max_length=200)
 
     @field_validator('ollama_base_url', 'cloud_base_url')
     @classmethod

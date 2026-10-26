@@ -14,6 +14,10 @@ from backend.app.retrieval import Retriever
 from backend.app.retrieval_routes import routes as retrieval_routes
 from backend.app.questions import QuestionStore, GenerationJobs
 from backend.app.question_routes import routes as question_routes
+from backend.app.relations import RelationStore, routes as relation_routes
+from backend.app.teaching import routes as teaching_routes
+from backend.app.learning import routes as learning_routes
+from backend.app.evaluations import routes as evaluation_routes
 from contextlib import asynccontextmanager
 
 
@@ -26,8 +30,8 @@ def create_app(data_dir=None):
     app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.3.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","), allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
     app.state.settings = SettingsStore(data_dir)
-    app.state.model = ModelClient(app.state.settings)
     app.state.db = Database(app.state.settings.directory)
+    app.state.model = ModelClient(app.state.settings, app.state.db)
     app.state.documents = DocumentStore(app.state.db)
     app.include_router(document_routes(app.state.documents))
     app.state.retriever = Retriever(app.state.db, app.state.settings)
@@ -35,6 +39,11 @@ def create_app(data_dir=None):
     app.state.questions = QuestionStore(app.state.db)
     app.state.jobs = GenerationJobs(app.state.questions, app.state.retriever, app.state.model)
     app.include_router(question_routes(app.state.questions, app.state.jobs))
+    app.state.relations = RelationStore(app.state.db)
+    app.include_router(relation_routes(app.state.relations, app.state.model))
+    app.include_router(teaching_routes(app.state.questions, app.state.jobs))
+    app.include_router(learning_routes(app.state.questions))
+    app.include_router(evaluation_routes(app.state.db, app.state.retriever, app.state.model))
 
     @app.middleware('http')
     async def api_alias(request, call_next):
@@ -73,6 +82,17 @@ def create_app(data_dir=None):
                 "embedding_ready": weights(embedding), "reranker_ready": weights(reranker),
                 "neo4j_configured": bool(os.getenv("MEDIGRAPH_NEO4J_PASSWORD")),
                 "message": "服务已启动；资料导入与关键词检索不依赖本地模型权重"}
+
+    @app.get('/summary')
+    def summary():
+        return {'documents': app.state.db.rows('SELECT count(*) AS n FROM documents')[0]['n'],
+                'chunks': len(app.state.db.chunks()),
+                'pending': app.state.db.rows("SELECT count(*) AS n FROM questions WHERE status='pending_review'")[0]['n']}
+
+    @app.get('/parsers')
+    def parsers():
+        import importlib.util
+        return {'native': True, 'docling': importlib.util.find_spec('docling') is not None}
 
     @app.get("/settings")
     def settings():

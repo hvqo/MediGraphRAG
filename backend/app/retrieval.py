@@ -131,8 +131,12 @@ class Retriever:
             temporary_meta.replace(self.meta_path)
             return {'ready': True, 'count': len(chunks)}
 
-    def search(self, query, top_k=None):
+    def search(self, query, top_k=None, document_id=None, evidence_ids=None, mode='hybrid'):
         chunks = self.db.chunks()
+        if document_id:
+            chunks = [item for item in chunks if item['document_id'] == document_id]
+        if evidence_ids:
+            chunks = [item for item in chunks if item['id'] in evidence_ids]
         config = self.settings.get()
         top_k = top_k or config.top_k
         if not chunks:
@@ -155,10 +159,10 @@ class Retriever:
             if score:
                 scores.append((index, score))
         lexical = sorted(scores, key=lambda item: item[1], reverse=True)[:30]
-        ranks = {index: 1 / (60 + rank) for rank, (index, _) in enumerate(lexical, 1)}
-        modes, warnings = ['keyword'], []
+        ranks = {index: 1 / (60 + rank) for rank, (index, _) in enumerate(lexical, 1)} if mode in ('keyword', 'hybrid') else {}
+        modes, warnings = (['keyword'] if mode in ('keyword', 'hybrid') else []), []
         seeds = entities(query, 5)
-        if seeds:
+        if seeds and mode == 'hybrid':
             neighbors = Counter(name for index, _ in lexical[:3] for name in entities(chunks[index]['text']) if name not in seeds)
             graph_scores = []
             for index, chunk in enumerate(chunks):
@@ -169,15 +173,23 @@ class Retriever:
                 ranks[index] = ranks.get(index, 0) + .3 / (60 + rank)
             if graph_scores:
                 modes.append('cooccurrence')
-        if config.use_vectors:
+        from .relations import RelationStore
+        paths = RelationStore(self.db).paths(query) if mode in ('graph', 'hybrid') else []
+        if paths:
+            supported_ids = {edge['evidence_id'] for path in paths for edge in path}
+            for number, chunk in enumerate(chunks):
+                if chunk['id'] in supported_ids:
+                    ranks[number] = ranks.get(number, 0) + 1 / 61
+            modes.append('reviewed_relations')
+        if mode == 'vector' or (config.use_vectors and mode == 'hybrid'):
             if not self.index_status()['ready']:
-                warnings.append(self.index_status()['message'] + '；本次使用关键词检索')
+                warnings.append(self.index_status()['message'] + ('；本次使用关键词检索' if mode == 'hybrid' else '；未运行向量检索'))
             else:
                 try:
                     import faiss
                     with self.lock:
                         metadata = json.loads(self.meta_path.read_text(encoding='utf-8'))
-                        if metadata['revision'] != revision(chunks):
+                        if metadata['revision'] != revision(self.db.chunks()):
                             raise ValueError('Index changed during search')
                         index = faiss.read_index(str(self.index_path))
                         distances, positions = index.search(embed([query], config.device), min(30, index.ntotal))
@@ -188,9 +200,9 @@ class Retriever:
                             ranks[number] = ranks.get(number, 0) + 1 / (60 + rank)
                     modes.append('vector')
                 except (ImportError, OSError, RuntimeError, ValueError):
-                    warnings.append('向量检索不可用；本次使用关键词检索')
+                    warnings.append('向量检索不可用' + ('；本次使用关键词检索' if mode == 'hybrid' else ''))
         selected = sorted(ranks, key=lambda number: ranks[number], reverse=True)[:20]
-        if config.use_reranker and selected:
+        if config.use_reranker and selected and mode == 'hybrid':
             try:
                 import torch
                 _, path = model_paths()
@@ -205,7 +217,7 @@ class Retriever:
             except (ImportError, OSError, RuntimeError, ValueError):
                 warnings.append('重排模型不可用；保留融合检索顺序')
         return {'items': [{**chunks[number], 'score': round(ranks[number], 6)} for number in selected[:top_k]],
-                'mode': '+'.join(modes), 'warnings': warnings}
+                'mode': '+'.join(modes) or 'unavailable', 'requested_mode': mode, 'paths': paths, 'warnings': warnings}
 
     def graph(self, query):
         chunks = self.search(query, 8)['items'] if query else self.db.chunks()[:20]

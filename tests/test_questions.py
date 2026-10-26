@@ -37,7 +37,9 @@ class QuestionTests(unittest.TestCase):
                         'answer': ['A'], 'analysis': '这是一条软件测试解析。',
                         'citations': [{'evidence_id': source['id'], 'quote': source['text']}],
                         'question_type': 'single_choice', 'difficulty': 'medium'}
-            client.app.state.jobs.model = FakeModel([question, {'supported': True, 'answer_valid': True, 'ambiguous': False}])
+            review = {'supported': True, 'answer_valid': True, 'ambiguous': False, 'leaks_answer': False, 'reason': '软件测试审核',
+                      'options': {key: {'correct': key == 'A', 'reason': '软件测试逐项理由', 'citations': question['citations']} for key in 'ABCD'}}
+            client.app.state.jobs.model = FakeModel([question, review])
             response = client.post('/questions/generate', json={'query': '糖尿病'})
             self.assertEqual(response.status_code, 202)
             job = wait_job(client, response.json()['id'])

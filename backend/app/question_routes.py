@@ -11,7 +11,10 @@ def routes(store, jobs):
 
     @router.post('/questions/generate', status_code=202)
     async def generate(value: GenerationRequest):
-        return jobs.start(value)
+        try:
+            return jobs.start(value)
+        except ValueError as error:
+            raise HTTPException(422, str(error))
 
     @router.get('/jobs')
     def list_jobs():

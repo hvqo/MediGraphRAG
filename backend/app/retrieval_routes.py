@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -8,6 +9,9 @@ from .evidence import answer_question
 class Query(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     top_k: int | None = Field(default=None, ge=1, le=10)
+    document_id: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list, max_length=20)
+    mode: Literal['keyword', 'vector', 'graph', 'hybrid'] = 'hybrid'
 
 
 class GraphQuery(BaseModel):
@@ -19,15 +23,15 @@ def routes(retriever, model):
 
     @router.post('/search')
     def search(value: Query):
-        return retriever.search(value.query, value.top_k)
+        return retriever.search(value.query, value.top_k, value.document_id, value.evidence_ids, value.mode)
 
     @router.post('/ask')
     async def ask(value: Query):
-        result = await run_in_threadpool(retriever.search, value.query, value.top_k)
+        result = await run_in_threadpool(retriever.search, value.query, value.top_k, value.document_id, value.evidence_ids, value.mode)
         answer = await answer_question(model, value.query, result)
         if answer['status'] == 'draft':
             cited = {citation['evidence_id'] for block in answer['blocks'] for citation in block['citations']}
-            current = {row['id'] for row in retriever.db.rows('SELECT id FROM chunks')}
+            current = {row['id'] for row in retriever.db.chunks()}
             if not cited <= current:
                 raise HTTPException(409, '回答生成期间原文资料已变化，请重新提问')
         return answer

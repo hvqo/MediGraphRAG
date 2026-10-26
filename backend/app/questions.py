@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from starlette.concurrency import run_in_threadpool
 
 from .evidence import Citation, SYSTEM, compact, context, validate_citations
-from .llm import ModelError
+from .llm import ModelError, for_task
+from .teaching import AutomaticReview, approved_case
 from .storage import now
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,12 @@ class GenerationRequest(BaseModel):
     question_type: Literal['single_choice', 'multiple_choice', 'case'] = 'single_choice'
     difficulty: Literal['easy', 'medium', 'hard'] = 'medium'
     count: int = Field(default=1, ge=1, le=10)
+    document_id: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list, max_length=20)
+    chapter: str = Field(default='', max_length=300)
+    knowledge_point: str = Field(default='', max_length=200)
+    cognition: Literal['remember', 'understand', 'apply', 'analyze'] = 'understand'
+    case_id: str | None = None
 
 
 class Question(BaseModel):
@@ -96,7 +103,8 @@ class QuestionStore:
         ids = list({item.evidence_id for item in question.citations})
         placeholders = ','.join('?' for _ in ids)
         return self.db.rows(f'''SELECT c.*,d.title,d.filename FROM chunks c JOIN documents d ON d.id=c.document_id
-                               WHERE c.id IN ({placeholders})''', ids)
+                               LEFT JOIN document_meta dm ON dm.document_id=d.id
+                               WHERE c.id IN ({placeholders}) AND coalesce(dm.active,1)=1''', ids)
 
     def valid_sources(self, question):
         try:
@@ -111,9 +119,19 @@ class QuestionStore:
             raise KeyError(identifier)
         row = rows[0]
         content = Question.model_validate_json(row['content'])
-        return {**row, 'content': content.model_dump(), 'sources_valid': self.valid_sources(content), 'evidence': self.evidence(content)}
+        extras = self.db.rows('SELECT * FROM question_meta WHERE question_id=?', (identifier,))
+        metadata = json.loads(extras[0]['metadata']) if extras else {}
+        valid = self.valid_sources(content)
+        if metadata.get('case_id'):
+            try:
+                approved_case(self.db, metadata['case_id'])
+                validate_citations([Citation.model_validate(c) for c in metadata.get('case_citations', [])], self.db.chunks())
+            except ValueError:
+                valid = False
+        return {**row, 'content': content.model_dump(), 'sources_valid': valid, 'evidence': self.evidence(content),
+                'metadata': metadata, 'automatic_review': json.loads(extras[0]['review']) if extras else {}}
 
-    def save(self, question, job_id=None):
+    def save(self, question, job_id=None, metadata=None, review=None):
         if not self.valid_sources(question):
             raise ValueError('资料已变化或引用无效，题目未保存')
         identifier, timestamp = uuid.uuid4().hex, now()
@@ -122,6 +140,7 @@ class QuestionStore:
                                (identifier, job_id, question.model_dump_json(), 'pending_review', '', timestamp, timestamp))
             connection.execute('INSERT INTO question_events(question_id,action,detail,created_at) VALUES (?,?,?,?)',
                                (identifier, 'generated', '通过自动检查，等待人工审核', timestamp))
+            connection.execute('INSERT INTO question_meta VALUES (?,?,?)', (identifier, json.dumps(metadata or {}, ensure_ascii=False), json.dumps(review or {}, ensure_ascii=False)))
         return identifier
 
     def edit(self, identifier, question):
@@ -133,6 +152,7 @@ class QuestionStore:
                                (question.model_dump_json(), 'pending_review', '编辑后需要重新审核', now(), identifier))
             connection.execute('INSERT INTO question_events(question_id,action,detail,created_at) VALUES (?,?,?,?)',
                                (identifier, 'edited', '人工编辑，审核状态已重置', now()))
+            connection.execute("UPDATE question_meta SET review='{}' WHERE question_id=?", (identifier,))
         return self.get(identifier)
 
     def review(self, identifier, value):
@@ -156,12 +176,14 @@ class GenerationJobs:
         with self.store.db.connect() as connection:
             connection.execute("UPDATE jobs SET status='interrupted',stage='服务重启，任务已中断',error='请重新发起生成',updated_at=? WHERE status IN ('queued','running')", (now(),))
 
-    def start(self, request):
+    def start(self, request, metadata=None):
+        if request.case_id:
+            approved_case(self.store.db, request.case_id)
         identifier, timestamp = uuid.uuid4().hex, now()
         with self.store.db.connect() as connection:
             connection.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?)',
                                (identifier, 'queued', 0, '等待生成', request.model_dump_json(), '{}', '', timestamp, timestamp))
-        task = asyncio.create_task(self.run(identifier, request))
+        task = asyncio.create_task(self.run(identifier, request, metadata))
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
         return self.store.job(identifier)
@@ -171,26 +193,32 @@ class GenerationJobs:
             task.cancel()
         await asyncio.gather(*self.tasks, return_exceptions=True)
 
-    async def run(self, identifier, request):
+    async def run(self, identifier, request, metadata=None):
         async with self.semaphore:
-            await self._run(identifier, request)
+            await self._run(identifier, request, metadata)
 
-    async def _run(self, identifier, request):
+    async def _run(self, identifier, request, metadata=None):
         saved = []
         attempts = []
-        model = self.model.snapshot() if hasattr(self.model, 'snapshot') else self.model
+        model = for_task(self.model, 'generation', 'question-v2')
+        reviewer = for_task(self.model, 'review', 'option-review-v2')
         try:
             self.store.update_job(identifier, status='running', stage='检索原文依据', progress=5)
-            result = await run_in_threadpool(self.retriever.search, request.query)
+            result = await run_in_threadpool(self.retriever.search, request.query, None, request.document_id, request.evidence_ids)
             evidence = result['items']
+            case = approved_case(self.store.db, request.case_id) if request.case_id else None
+            if case:
+                case_ids = {c['evidence_id'] for c in case['citations']}
+                evidence = list({c['id']: c for c in evidence + [c for c in self.store.db.chunks() if c['id'] in case_ids]}.values())
             if not evidence:
                 raise ModelError('没有找到可用原文，请先导入资料或调整考点')
             for number in range(request.count):
                 last_error = None
                 for attempt in range(2):
+                    raw = None
                     self.store.update_job(identifier, stage=f'生成并核验第 {number + 1}/{request.count} 题（尝试 {attempt + 1}）', progress=10 + int(80 * number / request.count))
                     try:
-                        raw = await model.json(SYSTEM, f'上次未通过的原因：{last_error or "无"}。如有错误，请严格修正。\n考点：{request.query}\n题型：{request.question_type}；难度：{request.difficulty}。'
+                        raw = await model.json(SYSTEM, f'共享病例材料（不得改动病例事实）：{case["narrative"] if case else "无"}\n认知层次：{request.cognition}；章节：{request.chapter}。\n上次未通过的原因：{last_error or "无"}。如有错误，请严格修正。\n考点：{request.query}\n题型：{request.question_type}；难度：{request.difficulty}。'
                             f'请生成一道不同于已生成题目的医学练习题。必须写出完整具体的问题；不能把格式示例中的“题干”“选项”“答案和各选项解析”当成实际内容。已生成题干：{[self.store.get(q)["content"]["topic"] for q in saved]}\n'
                             f'资料：{context(evidence)}\n只输出一个实际题目对象。topic 必须是完整具体的问题，不能是资料名称。'
                             'options 为四个实际选项；answer 是正确选项字母数组；analysis 说明答案及各干扰项。'
@@ -204,13 +232,21 @@ class GenerationJobs:
                         validate_citations(question.citations, evidence)
                         if any(compact(self.store.get(q)['content']['topic']) == compact(question.topic) for q in saved):
                             raise ValueError('生成了重复题干')
-                        review = await model.json(SYSTEM, '你是独立审题环节。检查答案和解析是否由资料支持、答案集合是否正确，'
+                        review = await reviewer.json(SYSTEM, '你是独立审题环节。逐项检查选项、答案和解析是否由资料支持、答案集合是否正确，'
                             '单选或病例题是否存在多个正确答案、干扰项是否含糊、题干是否直接泄漏答案。'
-                            '资料不足或不相关时拒绝。输出 {"supported":true或false,"answer_valid":true或false,"ambiguous":true或false,"reason":"原因"}。\n'
-                            f'资料：{context(evidence)}\n题目：{question.model_dump_json()}')
-                        if review.get('supported') is not True or review.get('answer_valid') is not True or review.get('ambiguous') is not False:
-                            raise ValueError('模型复核未通过：' + str(review.get('reason', '依据或答案存在问题'))[:400])
-                        saved.append(self.store.save(question, identifier))
+                            f'资料不足或不相关时拒绝。输出结构：{json.dumps(AutomaticReview.model_json_schema(), ensure_ascii=False)}。options 必须包含 ABCD，每项 correct 指是否为正确答案，reason 说明依据与歧义，citations 提供逐字引文。leaks_answer 表示题干直接泄漏答案。\n'
+                            f'共享病例：{case["narrative"] if case else "无"}\n资料：{context(evidence)}\n题目：{question.model_dump_json()}')
+                        checked = AutomaticReview.model_validate(review)
+                        checked.check(question, evidence)
+                        from .retrieval import revision
+                        provenance = {**(metadata or {}), 'chapter': request.chapter, 'knowledge_point': request.knowledge_point or request.query,
+                                      'cognition': request.cognition, 'case_id': request.case_id, 'case_narrative': case['narrative'] if case else '',
+                                      'case_citations': case['citations'] if case else [],
+                                      'template': 'question-v2', 'review_template': 'option-review-v2', 'source_revision': revision(evidence),
+                                      'review_uses_same_model': getattr(model, 'store', None) is None or
+                                        (model.store.get().provider, model.store.get().ollama_model, model.store.get().cloud_model) ==
+                                        (reviewer.store.get().provider, reviewer.store.get().ollama_model, reviewer.store.get().cloud_model)}
+                        saved.append(self.store.save(question, identifier, provenance, checked.model_dump()))
                         attempts.append({'question': number + 1, 'attempt': attempt + 1, 'outcome': 'passed'})
                         self.store.update_job(identifier, result=json.dumps({'question_ids': saved, 'requested': request.count, 'attempts': attempts}))
                         last_error = None
@@ -227,6 +263,8 @@ class GenerationJobs:
                         else:
                             last_error = str(error)[:800]
                         attempts.append({'question': number + 1, 'attempt': attempt + 1, 'outcome': 'rejected', 'reason': last_error})
+                        with self.store.db.connect() as connection:
+                            connection.execute('INSERT INTO rejected_candidates VALUES (?,?,?,?,?)', (uuid.uuid4().hex, identifier, json.dumps(raw, ensure_ascii=False), last_error, now()))
                         self.store.update_job(identifier, result=json.dumps({'question_ids': saved, 'requested': request.count, 'attempts': attempts}))
                 if last_error:
                     raise ModelError(last_error)

@@ -26,6 +26,8 @@ class Database:
                 );
                 CREATE INDEX IF NOT EXISTS chunks_document ON chunks(document_id);
             ''')
+        from .migrations import migrate
+        migrate(self)
 
     @contextmanager
     def connect(self):
@@ -43,5 +45,9 @@ class Database:
             return [dict(row) for row in connection.execute(sql, parameters)]
 
     def chunks(self):
-        return self.rows('''SELECT c.*, d.title, d.filename FROM chunks c
-                            JOIN documents d ON d.id=c.document_id ORDER BY c.document_id, c.ordinal''')
+        return self.rows('''SELECT c.*,d.title,d.filename,coalesce(cm.heading,'') AS heading,
+                            coalesce(cm.bbox,'[]') AS bbox,coalesce(cm.kind,'text') AS kind
+                            FROM chunks c JOIN documents d ON d.id=c.document_id
+                            LEFT JOIN document_meta dm ON dm.document_id=d.id
+                            LEFT JOIN chunk_meta cm ON cm.chunk_id=c.id
+                            WHERE coalesce(dm.active,1)=1 ORDER BY c.document_id,c.ordinal''')

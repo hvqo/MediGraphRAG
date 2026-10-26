@@ -1,5 +1,9 @@
 import json
 import httpx
+import time
+import uuid
+from contextlib import nullcontext
+from .storage import now
 
 
 class ModelError(RuntimeError):
@@ -7,22 +11,27 @@ class ModelError(RuntimeError):
 
 
 class ModelClient:
-    def __init__(self, store):
+    def __init__(self, store, db=None, role='generation', template='structured-v1'):
         self.store = store
+        self.db, self.role, self.template = db, role, template
+        self.usage = (None, None)
 
     def _headers(self):
         return {'Authorization': 'Bearer ' + self.store.key()}
 
-    def snapshot(self):
+    def snapshot(self, role=None, template=None):
         from types import SimpleNamespace
-        if not hasattr(self.store, 'lock'):
-            return self
-        with self.store.lock:
-            settings, key = self.store.get(), self.store.key()
-        return ModelClient(SimpleNamespace(get=lambda: settings, key=lambda: key))
+        with getattr(self.store, 'lock', nullcontext()):
+            settings, key = self.store.get().model_copy(deep=True), self.store.key()
+        if role == 'review' and settings.review_provider != 'same':
+            settings.provider = settings.review_provider
+            if settings.review_model:
+                setattr(settings, 'ollama_model' if settings.provider == 'ollama' else 'cloud_model', settings.review_model)
+        return ModelClient(SimpleNamespace(get=lambda: settings, key=lambda: key), self.db, role or self.role, template or self.template)
 
     async def check(self):
         settings = self.store.get()
+        self.usage = (None, None)
         try:
             async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
                 if settings.provider == 'ollama':
@@ -41,6 +50,28 @@ class ModelClient:
             return {'ok': False, 'message': '无法连接模型服务，请检查地址、网络或凭据'}
 
     async def json(self, system, prompt):
+        started, output, error = time.perf_counter(), None, ''
+        self.usage = (None, None)
+        settings = self.store.get()
+        from .retrieval import revision
+        source_revision = revision(self.db.chunks()) if self.db else ''
+        try:
+            output = await self._json(system, prompt)
+            return output
+        except ModelError as exc:
+            error = str(exc)
+            raise
+        finally:
+            if self.db:
+                with self.db.connect() as connection:
+                    connection.execute('INSERT INTO traces VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        (uuid.uuid4().hex, self.role, settings.provider,
+                         settings.ollama_model if settings.provider == 'ollama' else settings.cloud_model,
+                         self.template, 'failed' if error else 'completed', round(time.perf_counter() - started, 4),
+                         *self.usage, json.dumps({'system': system, 'prompt': prompt, 'settings': settings.model_dump(), 'source_revision': source_revision}, ensure_ascii=False),
+                         json.dumps(output, ensure_ascii=False) if output is not None else None, error, now()))
+
+    async def _json(self, system, prompt):
         settings = self.store.get()
         messages = [{'role': 'system', 'content': system}, {'role': 'user', 'content': prompt}]
         try:
@@ -50,7 +81,9 @@ class ModelClient:
                         'model': settings.ollama_model, 'messages': messages, 'stream': False, 'format': 'json',
                         'options': {'temperature': 0.15, 'num_ctx': 8192}})
                     response.raise_for_status()
-                    content = response.json()['message']['content']
+                    payload = response.json()
+                    content = payload['message']['content']
+                    self.usage = (payload.get('prompt_eval_count'), payload.get('eval_count'))
                 else:
                     if not settings.cloud_base_url or not settings.cloud_model or not self.store.key():
                         raise ModelError('云端模型尚未配置完整')
@@ -58,7 +91,10 @@ class ModelClient:
                         'model': settings.cloud_model, 'messages': messages, 'temperature': 0.15,
                         'response_format': {'type': 'json_object'}})
                     response.raise_for_status()
-                    content = response.json()['choices'][0]['message']['content']
+                    payload = response.json()
+                    content = payload['choices'][0]['message']['content']
+                    usage = payload.get('usage') or {}
+                    self.usage = (usage.get('prompt_tokens'), usage.get('completion_tokens'))
             content = content.strip()
             if content.startswith('```'):
                 content = content.split('\n', 1)[1].rsplit('```', 1)[0].strip()
@@ -74,3 +110,8 @@ class ModelClient:
             raise ModelError('模型服务连接失败或超时，请检查服务状态') from None
         except (ValueError, KeyError, TypeError, IndexError, AttributeError):
             raise ModelError('模型没有返回有效的结构化结果，请重试或更换模型') from None
+
+
+def for_task(model, role, template):
+    """Freeze a real client, while supporting narrow test transports."""
+    return model.snapshot(role, template) if isinstance(model, ModelClient) else model

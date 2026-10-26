@@ -8,6 +8,7 @@ import threading
 from xml.etree import ElementTree
 
 from .storage import now
+from .provenance import annotate, metadata
 
 
 class DocumentError(ValueError):
@@ -63,8 +64,17 @@ def parse(content, suffix):
                 document = ElementTree.fromstring(archive.read(info))
             ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
             # Only w:t contributes visible document text; XML properties are excluded.
-            units = [(None, f'第 {index + 1} 段', ''.join(t.text or '' for t in p.findall('.//w:t', ns)).strip())
-                     for index, p in enumerate(document.findall('.//w:p', ns))]
+            units = []
+            body = document.find('.//w:body', ns)
+            for block in body if body is not None else []:
+                if block.tag.endswith('}tbl'):
+                    rows = []
+                    for row in block.findall('./w:tr', ns):
+                        cells = [''.join(t.text or '' for t in cell.findall('.//w:t', ns)) for cell in row.findall('./w:tc', ns)]
+                        rows.append('| ' + ' | '.join(cells) + ' |')
+                    units.append((None, f'表格块 {len(units) + 1}', '\n'.join(rows)))
+                elif block.tag.endswith('}p'):
+                    units.append((None, f'第 {len(units) + 1} 段', ''.join(t.text or '' for t in block.findall('.//w:t', ns)).strip()))
             warnings.append('DOCX 不含稳定页码，引用使用正文段落位置')
         except DocumentError:
             raise
@@ -113,21 +123,22 @@ class DocumentStore:
     def list(self):
         return [self._public(row) for row in self.db.rows('SELECT * FROM documents ORDER BY created_at DESC')]
 
-    @staticmethod
-    def _public(row):
-        return {**row, 'warnings': json.loads(row['warnings'])}
+    def _public(self, row):
+        return {**row, 'warnings': json.loads(row['warnings']), **metadata(self.db, row['id'])}
 
     def get(self, identifier):
         rows = self.db.rows('SELECT * FROM documents WHERE id=?', (identifier,))
         if not rows:
             raise KeyError(identifier)
-        return {**self._public(rows[0]), 'chunks': self.db.rows('SELECT * FROM chunks WHERE document_id=? ORDER BY ordinal', (identifier,))}
+        return {**self._public(rows[0]), 'chunks': self.db.rows('''SELECT c.*,coalesce(cm.heading,'') AS heading,
+            coalesce(cm.bbox,'[]') AS bbox,coalesce(cm.kind,'text') AS kind FROM chunks c
+            LEFT JOIN chunk_meta cm ON cm.chunk_id=c.id WHERE document_id=? ORDER BY ordinal''', (identifier,))}
 
-    def add(self, filename, content, title=None):
+    def add(self, filename, content, title=None, parser='native'):
         with self.lock:
-            return self._add(filename, content, title)
+            return self._add(filename, content, title, parser)
 
-    def _add(self, filename, content, title=None):
+    def _add(self, filename, content, title=None, parser='native'):
         if not content or len(content) > MAX_BYTES:
             raise DocumentError('文件为空或超过 25MB')
         filename = filename.replace('\\', '/').rsplit('/', 1)[-1][:200]
@@ -136,7 +147,7 @@ class DocumentStore:
         existing = self.db.rows('SELECT * FROM documents WHERE id=?', (identifier,))
         if existing:
             return {**self._public(existing[0]), 'duplicate': True}
-        units, warnings, page_count = parse(content, suffix)
+        units, warnings, page_count, extras = self._parse(content, suffix, parser)
         chunks = split_chunks(identifier, units)
         row = {'id': identifier, 'title': (title or Path(filename).stem).strip()[:200] or '未命名资料',
                'filename': filename, 'kind': suffix.lstrip('.'), 'created_at': now(),
@@ -147,6 +158,7 @@ class DocumentStore:
         with self.db.connect() as connection:
             connection.execute('INSERT INTO documents VALUES (:id,:title,:filename,:kind,:created_at,:pages,:chunk_count,:warnings)', row)
             connection.executemany('INSERT INTO chunks VALUES (:id,:document_id,:ordinal,:page,:location,:start_offset,:end_offset,:text)', chunks)
+        self._annotate(identifier, chunks, parser, extras)
         return {**self._public(row), 'duplicate': False}
 
     def delete(self, identifier):
@@ -158,3 +170,53 @@ class DocumentStore:
     def source_path(self, identifier):
         document = self.get(identifier)
         return self.uploads / (identifier + '.' + document['kind']), document['filename']
+
+    def rechunk(self, identifier, size, overlap):
+        with self.lock:
+            path, _ = self.source_path(identifier)
+            document = self.get(identifier)
+            parser = 'docling' if document['parser'].startswith('docling') else 'native'
+            units, _, _, extras = self._parse(path.read_bytes(), '.' + document['kind'], parser)
+            chunks = split_chunks(identifier, units, size, overlap)
+            with self.db.connect() as connection:
+                connection.execute('DELETE FROM chunks WHERE document_id=?', (identifier,))
+                connection.executemany('INSERT INTO chunks VALUES (:id,:document_id,:ordinal,:page,:location,:start_offset,:end_offset,:text)', chunks)
+                connection.execute('UPDATE documents SET chunk_count=? WHERE id=?', (len(chunks), identifier))
+            self._annotate(identifier, chunks, parser, extras)
+            return self.get(identifier)
+
+    @staticmethod
+    def _parse(content, suffix, parser):
+        if parser == 'docling':
+            from .parsing import docling_parse
+            return docling_parse(content, suffix)
+        if parser != 'native':
+            raise DocumentError('未知解析器')
+        units, warnings, pages = parse(content, suffix)
+        return units, warnings, pages, {}
+
+    def _annotate(self, identifier, chunks, parser, extras):
+        annotate(self.db, identifier, chunks, parser + '-v2')
+        with self.db.connect() as connection:
+            connection.execute('UPDATE document_meta SET parser=? WHERE document_id=?', (parser + '-v2', identifier))
+            for chunk in chunks:
+                extra = extras.get(chunk['location'], {})
+                kind = extra.get('kind', 'table' if chunk['text'].lstrip().startswith('|') else 'text')
+                if extra:
+                    connection.execute('UPDATE chunk_meta SET heading=?,bbox=?,kind=? WHERE chunk_id=?',
+                                       (extra.get('heading', ''), json.dumps(extra.get('bbox', [])), kind, chunk['id']))
+                else:
+                    connection.execute('UPDATE chunk_meta SET kind=? WHERE chunk_id=?', (kind, chunk['id']))
+
+    def reparse(self, identifier, parser):
+        with self.lock:
+            document = self.get(identifier)
+            path, _ = self.source_path(identifier)
+            units, warnings, pages, extras = self._parse(path.read_bytes(), '.' + document['kind'], parser)
+            chunks = split_chunks(identifier, units)
+            with self.db.connect() as connection:
+                connection.execute('DELETE FROM chunks WHERE document_id=?', (identifier,))
+                connection.executemany('INSERT INTO chunks VALUES (:id,:document_id,:ordinal,:page,:location,:start_offset,:end_offset,:text)', chunks)
+                connection.execute('UPDATE documents SET chunk_count=?,pages=?,warnings=? WHERE id=?', (len(chunks), pages, json.dumps(warnings), identifier))
+            self._annotate(identifier, chunks, parser, extras)
+            return self.get(identifier)

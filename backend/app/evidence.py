@@ -1,7 +1,7 @@
 import json
 import re
 from pydantic import BaseModel, ConfigDict, Field
-from .llm import ModelError
+from .llm import ModelError, for_task
 
 
 class Citation(BaseModel):
@@ -43,7 +43,8 @@ SYSTEM = '''你是医学教育资料助手。只依据提供的原文回答或�
 
 
 async def answer_question(model, query, result):
-    model = model.snapshot() if hasattr(model, 'snapshot') else model
+    reviewer = for_task(model, 'review', 'answer-review-v2')
+    model = for_task(model, 'generation', 'answer-v2')
     evidence = result['items']
     if not evidence:
         return {'status': 'insufficient_evidence', 'blocks': [], 'evidence': [], **{key: result[key] for key in ['mode', 'warnings']}}
@@ -57,7 +58,7 @@ async def answer_question(model, query, result):
             validate_citations(block.citations, evidence)
     except ValueError:
         raise ModelError('回答未通过原文引用校验，已拦截；请重试或调整检索问题') from None
-    review = await model.json(SYSTEM, '核验以下回答的每个事实是否得到资料支持；若问题与资料不相关也应拒绝。'
+    review = await reviewer.json(SYSTEM, '核验以下回答的每个事实是否得到资料支持；若问题与资料不相关也应拒绝。'
                              '仅输出 {"supported":true或false,"reason":"原因"}。\n'
                              f'问题：{query}\n资料：{context(evidence)}\n回答：{answer.model_dump_json()}')
     if review.get('supported') is not True:
