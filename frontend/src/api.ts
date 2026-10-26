@@ -2,7 +2,11 @@ export const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
   /\/$/,
   "",
 );
-export async function api(path, options = {}) {
+// Existing JavaScript views retain their dynamic response shape during gradual migration.
+export async function api<T = any>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const response = await fetch(API + path, {
     ...options,
     headers: {
@@ -19,11 +23,11 @@ export async function api(path, options = {}) {
       typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-          ? detail.map((e) => e.msg).join("；")
+          ? detail.map((e: { msg: string }) => e.msg).join("；")
           : "请求失败，请检查服务状态",
     );
   }
-  return data;
+  return data as T;
 }
-export const send = (path, body, method = "POST") =>
-  api(path, { method, body: JSON.stringify(body) });
+export const send = <T = any>(path: string, body: unknown, method = "POST") =>
+  api<T>(path, { method, body: JSON.stringify(body) });

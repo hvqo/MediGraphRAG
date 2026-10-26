@@ -12,8 +12,13 @@ const form = ref({
   question_type: "single_choice",
   difficulty: "medium",
   count: 1,
+  chapter: "",
+  knowledge_point: "",
+  cognition: "understand",
+  case_id: null,
 });
 const jobs = ref([]),
+  cases = ref([]),
   error = ref(""),
   busy = ref(false);
 const emit = defineEmits(["navigate", "changed"]);
@@ -28,6 +33,7 @@ const labels = {
 };
 async function load() {
   jobs.value = await api("/jobs");
+  cases.value = await api("/cases");
   const current = jobs.value
     .filter((j) => j.status === "completed")
     .map((j) => j.id)
@@ -76,6 +82,35 @@ onBeforeUnmount(stop);
   <div class="two-columns">
     <form class="panel stack" @submit.prevent="generate">
       <h2>出题要求</h2>
+      <div class="form-grid">
+        <label>章节<input v-model="form.chapter" maxlength="300" /></label
+        ><label
+          >知识点标签<input
+            v-model="form.knowledge_point"
+            maxlength="200"
+            placeholder="用于覆盖统计和错题复习" /></label
+        ><label
+          >认知层次<select aria-label="认知层次" v-model="form.cognition">
+            <option value="remember">记忆</option>
+            <option value="understand">理解</option>
+            <option value="apply">应用</option>
+            <option value="analyze">分析</option>
+          </select></label
+        ><label
+          >共享病例<select aria-label="共享病例" v-model="form.case_id">
+            <option :value="null">无共享病例</option>
+            <option
+              v-for="c in cases.filter(
+                (c) => c.status === 'approved' && c.sources_valid,
+              )"
+              :key="c.id"
+              :value="c.id"
+            >
+              {{ c.title }}
+            </option>
+          </select></label
+        >
+      </div>
       <label
         >知识点或考点<textarea
           v-model="form.query"
@@ -87,13 +122,13 @@ onBeforeUnmount(stop);
       </label>
       <div class="form-grid">
         <label
-          >题型<select v-model="form.question_type">
+          >题型<select aria-label="题型" v-model="form.question_type">
             <option value="single_choice">单项选择题</option>
             <option value="multiple_choice">多项选择题</option>
             <option value="case">病例情境单选题</option>
           </select></label
         ><label
-          >难度<select v-model="form.difficulty">
+          >难度<select aria-label="难度" v-model="form.difficulty">
             <option value="easy">基础</option>
             <option value="medium">进阶</option>
             <option value="hard">综合</option>

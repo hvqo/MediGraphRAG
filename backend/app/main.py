@@ -27,8 +27,15 @@ def create_app(data_dir=None):
         application.state.jobs.recover()
         yield
         await application.state.jobs.shutdown()
-    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.3.0", lifespan=lifespan)
-    app.add_middleware(CORSMiddleware, allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","), allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
+
+    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.4.0", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Content-Type"],
+    )
     app.state.settings = SettingsStore(data_dir)
     app.state.db = Database(app.state.settings.directory)
     app.state.model = ModelClient(app.state.settings, app.state.db)
@@ -45,22 +52,22 @@ def create_app(data_dir=None):
     app.include_router(learning_routes(app.state.questions))
     app.include_router(evaluation_routes(app.state.db, app.state.retriever, app.state.model))
 
-    @app.middleware('http')
+    @app.middleware("http")
     async def api_alias(request, call_next):
-        if request.scope['path'].startswith('/api/'):
-            request.scope['path'] = request.scope['path'][4:]
-            request.scope['raw_path'] = request.scope['path'].encode('utf-8')
+        if request.scope["path"].startswith("/api/"):
+            request.scope["path"] = request.scope["path"][4:]
+            request.scope["raw_path"] = request.scope["path"].encode("utf-8")
         return await call_next(request)
 
-    frontend = ROOT / 'frontend/dist'
-    if (frontend / 'assets').exists():
-        app.mount('/assets', StaticFiles(directory=frontend / 'assets'), name='assets')
+    frontend = ROOT / "frontend/dist"
+    if (frontend / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
 
-    @app.get('/', include_in_schema=False)
+    @app.get("/", include_in_schema=False)
     def homepage():
-        if (frontend / 'index.html').exists():
-            return FileResponse(frontend / 'index.html')
-        return JSONResponse({'detail': '请先构建前端：cd frontend，然后运行 npm ci 和 npm run build'}, status_code=503)
+        if (frontend / "index.html").exists():
+            return FileResponse(frontend / "index.html")
+        return JSONResponse({"detail": "请先构建前端：cd frontend，然后运行 npm ci 和 npm run build"}, status_code=503)
 
     @app.exception_handler(DocumentError)
     async def document_error(request: Request, error: DocumentError):
@@ -77,22 +84,31 @@ def create_app(data_dir=None):
     @app.get("/status")
     def status():
         embedding, reranker = model_paths()
-        weights = lambda directory: any((directory / name).exists() for name in ["model.safetensors", "pytorch_model.bin"])
-        return {"status": "ok", "provider": app.state.settings.get().provider,
-                "embedding_ready": weights(embedding), "reranker_ready": weights(reranker),
-                "neo4j_configured": bool(os.getenv("MEDIGRAPH_NEO4J_PASSWORD")),
-                "message": "服务已启动；资料导入与关键词检索不依赖本地模型权重"}
+        weights = lambda directory: any(
+            (directory / name).exists() for name in ["model.safetensors", "pytorch_model.bin"]
+        )
+        return {
+            "status": "ok",
+            "provider": app.state.settings.get().provider,
+            "embedding_ready": weights(embedding),
+            "reranker_ready": weights(reranker),
+            "neo4j_configured": bool(os.getenv("MEDIGRAPH_NEO4J_PASSWORD")),
+            "message": "服务已启动；资料导入与关键词检索不依赖本地模型权重",
+        }
 
-    @app.get('/summary')
+    @app.get("/summary")
     def summary():
-        return {'documents': app.state.db.rows('SELECT count(*) AS n FROM documents')[0]['n'],
-                'chunks': len(app.state.db.chunks()),
-                'pending': app.state.db.rows("SELECT count(*) AS n FROM questions WHERE status='pending_review'")[0]['n']}
+        return {
+            "documents": app.state.db.rows("SELECT count(*) AS n FROM documents")[0]["n"],
+            "chunks": len(app.state.db.chunks()),
+            "pending": app.state.db.rows("SELECT count(*) AS n FROM questions WHERE status='pending_review'")[0]["n"],
+        }
 
-    @app.get('/parsers')
+    @app.get("/parsers")
     def parsers():
         import importlib.util
-        return {'native': True, 'docling': importlib.util.find_spec('docling') is not None}
+
+        return {"native": True, "docling": importlib.util.find_spec("docling") is not None}
 
     @app.get("/settings")
     def settings():
@@ -105,6 +121,10 @@ def create_app(data_dir=None):
     @app.post("/settings/test")
     async def test_settings():
         return await app.state.model.check()
+
+    @app.post("/settings/test-review")
+    async def test_review_settings():
+        return await app.state.model.snapshot("review").check()
 
     return app
 

@@ -7,6 +7,83 @@
   font-size: 14px;
   line-height: 1.65;
 }
+
+.sidebar nav {
+  overflow-y: auto;
+  min-height: 0;
+}
+.reader-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.source-pane {
+  min-width: 0;
+}
+.reader-text {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  border-top: 1px solid #e1e9e5;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+.reader-text pre,
+.diff {
+  white-space: pre-wrap;
+  overflow: auto;
+  max-height: 400px;
+}
+.chunk-tabs {
+  display: flex;
+  gap: 6px;
+  overflow: auto;
+  max-height: 120px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.chunk-tabs button {
+  font-size: 11px;
+  padding: 5px 9px;
+}
+.chunk-tabs .selected {
+  background: #e7f3ec;
+  border-color: #4d9982;
+}
+.pdf-reader {
+  overflow: auto;
+}
+.pdf-page {
+  position: relative;
+  display: inline-block;
+  background: #fff;
+}
+.pdf-page canvas {
+  display: block;
+}
+.pdf-page .textLayer {
+  position: absolute;
+  inset: 0;
+  --user-unit: 1;
+}
+.pdf-page .textLayer .pdf-highlight {
+  background: #ffd24d90;
+}
+mark {
+  background: #ffdc6d99;
+  color: inherit;
+}
+summary {
+  cursor: pointer;
+}
+details .stack {
+  padding-top: 12px;
+}
+@media (max-width: 1100px) {
+  .reader-layout {
+    grid-template-columns: 1fr;
+  }
+}
 * {
   box-sizing: border-box;
 }
@@ -285,6 +362,7 @@ fieldset {
   white-space: nowrap;
 }
 .panel {
+  overflow-wrap: anywhere;
   border: 1px solid #e0e8e7;
   border-radius: 13px;
   background: #fff;
@@ -322,6 +400,7 @@ fieldset {
   min-height: 470px;
 }
 .stack {
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
   gap: 16px;
   align-content: start;
@@ -355,8 +434,18 @@ fieldset {
 }
 .inline {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+.inline > label {
+  min-width: 0;
+  max-width: 100%;
+}
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .between {
   justify-content: space-between;

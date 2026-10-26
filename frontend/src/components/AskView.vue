@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { send } from "../api";
 import EvidenceList from "./EvidenceList.vue";
 const query = ref(""),
+  mode = ref("hybrid"),
   result = ref(null),
   answer = ref(null),
   busy = ref(false),
@@ -13,8 +14,15 @@ async function run(generate) {
   error.value = "";
   answer.value = null;
   try {
-    result.value = await send("/search", { query: query.value });
-    if (generate) answer.value = await send("/ask", { query: query.value });
+    result.value = await send("/search", {
+      query: query.value,
+      mode: mode.value,
+    });
+    if (generate)
+      answer.value = await send("/ask", {
+        query: query.value,
+        mode: mode.value,
+      });
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -33,6 +41,12 @@ async function run(generate) {
     <span class="pill">医学学习与研究</span>
   </section>
   <form class="question-bar" @submit.prevent="run(true)">
+    <select v-model="mode" aria-label="检索方式">
+      <option value="hybrid">融合检索</option>
+      <option value="keyword">关键词</option>
+      <option value="vector">仅向量</option>
+      <option value="graph">已审核关系</option>
+    </select>
     <label class="sr-only" for="medical-query">医学问题</label
     ><input
       id="medical-query"

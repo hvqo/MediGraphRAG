@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { api, send } from "../api";
+import { useRouter } from "vue-router";
+const router = useRouter();
 import EvidenceList from "./EvidenceList.vue";
 const items = ref([]),
   title = ref(""),
@@ -8,10 +10,13 @@ const items = ref([]),
   error = ref(""),
   message = ref(""),
   busy = ref(false),
+  parser = ref("native"),
+  parsers = ref({ docling: false }),
   preview = ref(null);
 const emit = defineEmits(["changed"]);
 async function load() {
   items.value = await api("/documents");
+  parsers.value = await api("/parsers");
 }
 async function perform(action) {
   busy.value = true;
@@ -35,6 +40,7 @@ async function upload(event) {
   if (!file) return;
   const form = new FormData();
   form.append("file", file);
+  form.append("parser", parser.value);
   await perform(() => api("/documents/upload", { method: "POST", body: form }));
   event.target.value = "";
 }
@@ -82,6 +88,14 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
 </script>
 
 <template>
+  <label
+    >解析方式<select aria-label="解析方式" v-model="parser">
+      <option value="native">轻量解析</option>
+      <option value="docling" :disabled="!parsers.docling">
+        Docling 增强解析{{ parsers.docling ? "" : "（未安装）" }}
+      </option>
+    </select></label
+  >
   <section class="page-intro">
     <div>
       <p class="eyebrow">YOUR MEDICAL LIBRARY</p>
@@ -174,7 +188,14 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
             </td>
             <td>
               <div class="inline">
-                <button class="text-button" @click="inspect(item)">
+                <button
+                  class="text-button"
+                  @click="
+                    router.push({ name: 'reader', params: { id: item.id } })
+                  "
+                >
+                  打开阅读器</button
+                ><button class="text-button" @click="inspect(item)">
                   查看原文</button
                 ><button class="text-button danger" @click="remove(item)">
                   删除

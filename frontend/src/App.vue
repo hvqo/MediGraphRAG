@@ -1,49 +1,21 @@
-<script setup>
-import { computed, defineAsyncComponent, onMounted, ref } from "vue";
-import { api } from "./api";
-const views = {
-  ask: defineAsyncComponent(() => import("./components/AskView.vue")),
-  documents: defineAsyncComponent(
-    () => import("./components/DocumentsView.vue"),
-  ),
-  generate: defineAsyncComponent(() => import("./components/GenerateView.vue")),
-  bank: defineAsyncComponent(() => import("./components/BankView.vue")),
-  graph: defineAsyncComponent(() => import("./components/GraphView.vue")),
-  settings: defineAsyncComponent(() => import("./components/SettingsView.vue")),
-};
-const navigation = [
-  { id: "ask", label: "依据问答", icon: "✧" },
-  { id: "documents", label: "医学资料库", icon: "▤" },
-  { id: "generate", label: "智能出题", icon: "＋" },
-  { id: "bank", label: "题库与审核", icon: "✓" },
-  { id: "graph", label: "知识图谱", icon: "⌘" },
-  { id: "settings", label: "模型与设置", icon: "⚙" },
-];
-const view = ref("ask"),
-  status = ref(null),
-  documents = ref([]),
-  questions = ref([]),
-  error = ref("");
-const active = computed(() =>
-  navigation.find((item) => item.id === view.value),
+<script setup lang="ts">
+import { computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
+import { navigation } from "./router";
+import { useWorkspace } from "./stores/workspace";
+const route = useRoute(),
+  router = useRouter(),
+  workspace = useWorkspace();
+const { status, summary, error } = storeToRefs(workspace);
+const view = computed(() => String(route.name || "ask"));
+const active = computed(
+  () => navigation.find((item) => item.id === view.value) || navigation[0],
 );
-const pending = computed(
-  () => questions.value.filter((q) => q.status === "pending_review").length,
-);
-async function refresh() {
-  try {
-    [status.value, documents.value, questions.value] = await Promise.all([
-      api("/status"),
-      api("/documents"),
-      api("/questions"),
-    ]);
-    error.value = "";
-  } catch (e) {
-    error.value = "无法连接后端服务，请先启动应用。";
-  }
-}
-function navigate(id) {
-  if (views[id]) view.value = id;
+const pending = computed(() => summary.value.pending);
+const refresh = () => workspace.refresh();
+function navigate(id: string) {
+  if (router.hasRoute(id)) router.push({ name: id });
 }
 onMounted(refresh);
 </script>
@@ -112,19 +84,21 @@ onMounted(refresh);
         </div>
         <div class="workspace-stats">
           <span
-            ><strong>{{ documents.length }}</strong> 份医学资料</span
+            ><strong>{{ summary.documents }}</strong> 份医学资料</span
           ><span
-            ><strong>{{
-              documents.reduce((n, d) => n + d.chunk_count, 0)
-            }}</strong>
-            个原文片段</span
+            ><strong>{{ summary.chunks }}</strong> 个原文片段</span
           ><span
             ><strong>{{ pending }}</strong> 道题待审核</span
           >
         </div>
-        <KeepAlive
-          ><component :is="views[view]" @navigate="navigate" @changed="refresh"
-        /></KeepAlive>
+        <RouterView v-slot="{ Component }"
+          ><KeepAlive
+            ><component
+              :is="Component"
+              :key="$route.name"
+              @navigate="navigate"
+              @changed="refresh" /></KeepAlive
+        ></RouterView>
       </main>
       <footer>MEDIGRAPH RAG <span>医学学习 · 原文追溯 · 人工审题</span></footer>
     </div>

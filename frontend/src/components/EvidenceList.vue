@@ -22,6 +22,22 @@ defineProps({ items: { type: Array, default: () => [] }, selected: String });
         ><span class="muted">⌄</span>
       </summary>
       <p class="source-text">{{ item.text }}</p>
+      <p v-if="item.source_metadata" class="help">
+        {{ item.source_metadata.source }} {{ item.source_metadata.edition }}
+        {{ item.source_metadata.year }} {{ item.source_metadata.scope }}
+      </p>
+      <RouterLink
+        :to="{
+          name: 'reader',
+          params: { id: item.document_id },
+          query: {
+            chunk: item.id,
+            page: item.page || 1,
+            quote: item.text.slice(0, 400),
+          },
+        }"
+        >定位原文 ↗</RouterLink
+      >
       <a
         :href="`${API}/documents/${item.document_id}/source`"
         target="_blank"
