@@ -4,9 +4,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from medigraph.evidence import answer_question
-from medigraph.llm import ModelError
-from web.api.main import create_app
+from backend.app.evidence import answer_question
+from backend.app.llm import ModelError
+from backend.app.main import create_app
 
 
 class FakeModel:
@@ -21,7 +21,7 @@ class RetrievalTests(unittest.TestCase):
         import numpy as np
         def fake_embeddings(texts, device):
             return np.tile(np.array([[1., 0.]], dtype='float32'), (len(texts), 1))
-        with tempfile.TemporaryDirectory() as directory, patch('medigraph.retrieval.embed', side_effect=fake_embeddings):
+        with tempfile.TemporaryDirectory() as directory, patch('backend.app.retrieval.embed', side_effect=fake_embeddings):
             client = TestClient(create_app(directory))
             client.post('/documents/text', json={'title': '索引测试', 'text': '糖尿病索引测试'})
             self.assertEqual(client.post('/indexes/build').status_code, 200)

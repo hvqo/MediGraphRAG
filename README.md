@@ -28,10 +28,10 @@ OpenAI-compatible 模型，在页面设置中切换。
 
 ```powershell
 python -m pip install -r requirements.txt
-cd web/frontend
+cd frontend
 npm ci
 npm run build
-cd ../..
+cd ..
 python main.py
 ```
 
@@ -108,8 +108,8 @@ Neo4j 在首版中用于浏览已有历史图谱；新资料的关系浏览默�
 ## 开发与验证
 
 ```powershell
-python -m uvicorn web.api.main:app --host 127.0.0.1 --port 8000 --reload
-# 另一个终端，在 web/frontend 下：
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+# 另一个终端，在 frontend 下：
 npm run dev
 # 接口与工作流测试：
 python -m unittest discover -s tests -v
@@ -136,11 +136,21 @@ python -m pip check
 ## 目录
 
 ```text
-medigraph/       配置、资料存储、检索、模型、问答、出题与审核服务
-web/api/         FastAPI 应用入口
-web/frontend/    Vue 工作台（按页面拆分）
+backend/app/     Python 后端、API 与领域模块
+frontend/        Vue 工作台（按页面拆分）
 tests/           来源、检索、模型协议、任务和审核回归测试
 scripts/         启动、环境适配、浏览器与本地模型检查
 docs/            改造计划与逐阶段进度
-utils/, agent/   保留的旧版工具与 MetaGPT 代码，非新版默认启动链路
+legacy/          历史 Python 工具和实验源码，非新版默认启动链路
+pyproject.toml   Python 包元数据与正式命令行入口
 ```
+
+## 源码规范与下一轮方案
+
+本分支已将全部三个 Notebook 的代码迁为 Python 文件，后端在 `backend/app`，
+前端在 `frontend`。详见 [源码整理记录](docs/SOURCE_LAYOUT.md)。
+`python -m pip install -e .` 可安装正式的 `medigraphrag` 命令；
+`python -m backend.app.cli --help` 可查看导入、检索和索引等离线操作。
+
+调研 RAGFlow、LightRAG、Dify、Docling 和 MedRAG 后的创意、优先级及验收条件，
+见 [下一轮改造方案](docs/V2_PROPOSAL.md)。该文档中的新功能尚未实施。

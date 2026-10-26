@@ -2,9 +2,9 @@ import tempfile
 import time
 import unittest
 from fastapi.testclient import TestClient
-from medigraph.storage import now
-from medigraph.questions import Question
-from web.api.main import create_app
+from backend.app.storage import now
+from backend.app.questions import Question
+from backend.app.main import create_app
 
 
 class FakeModel:

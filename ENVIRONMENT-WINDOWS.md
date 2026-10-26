@@ -46,7 +46,7 @@ $python = '..\.venv\Scripts\python.exe'
 & $python -m pip install --find-links .environment-wheels -r requirements-windows.lock.txt
 & $python -m pip check
 & $python scripts/check_environment.py
-Push-Location web/frontend
+Push-Location frontend
 npm.cmd ci
 npm.cmd run build
 Pop-Location
@@ -68,7 +68,7 @@ Pop-Location
    默认改为本地 Ollama。当前机器已有 qwen2.5 模型。
 
 `config/config.yaml` 为旧工具保留，基础目录为相对路径。新版应用配置集中在
-`medigraph/config.py`、本地 `.env` 与页面设置中；缺少索引不会阻止后端启动。
+`backend/app/config.py`、本地 `.env` 与页面设置中；缺少索引不会阻止后端启动。
 
 ## 已完成的验证（2026-10-23）
 

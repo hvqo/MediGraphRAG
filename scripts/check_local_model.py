@@ -6,13 +6,13 @@ import tempfile
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from medigraph.config import SettingsStore
-from medigraph.documents import DocumentStore
-from medigraph.evidence import answer_question
-from medigraph.llm import ModelClient
-from medigraph.questions import GenerationJobs, GenerationRequest, QuestionStore
-from medigraph.retrieval import Retriever
-from medigraph.storage import Database
+from backend.app.config import SettingsStore
+from backend.app.documents import DocumentStore
+from backend.app.evidence import answer_question
+from backend.app.llm import ModelClient
+from backend.app.questions import GenerationJobs, GenerationRequest, QuestionStore
+from backend.app.retrieval import Retriever
+from backend.app.storage import Database
 
 
 class RecordingModel(ModelClient):

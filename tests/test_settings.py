@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from fastapi.testclient import TestClient
-from web.api.main import create_app
+from backend.app.main import create_app
 
 
 class SettingsTests(unittest.TestCase):

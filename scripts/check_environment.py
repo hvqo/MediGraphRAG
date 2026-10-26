@@ -49,7 +49,7 @@ check('vector_search', vector_search)
 for module in ['transformers', 'gensim', 'fastapi', 'uvicorn', 'neo4j', 'yaml',
                'langchain', 'langchain_community', 'langchain_core', 'lancedb',
                'metagpt.team', 'metagpt.actions', 'metagpt.roles',
-               'utils.generate', 'agent.knowCleaner', 'agent.questionGenerator']:
+               'legacy.utils.generate', 'legacy.agent.knowCleaner', 'legacy.agent.questionGenerator']:
     check(module, lambda name=module: str(importlib.import_module(name).__file__))
 
 report['metagpt_distribution'] = version('metagpt')

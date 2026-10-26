@@ -10,9 +10,9 @@ import sys
 import httpx
 from playwright.sync_api import sync_playwright, expect
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from medigraph.config import SettingsStore
-from medigraph.storage import Database
-from medigraph.questions import QuestionStore, Question
+from backend.app.config import SettingsStore
+from backend.app.storage import Database
+from backend.app.questions import QuestionStore, Question
 
 base = 'http://127.0.0.1:8000'
 folder = Path('.runtime/ui-check')

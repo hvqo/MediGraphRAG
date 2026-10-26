@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import httpx
-from medigraph.config import SettingsStore, SettingsUpdate
-from medigraph.llm import ModelClient
+from backend.app.config import SettingsStore, SettingsUpdate
+from backend.app.llm import ModelClient
 
 
 class ModelTransportTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class ModelTransportTests(unittest.TestCase):
             return httpx.Response(200, json={'choices': [{'message': {'content': '{"value":"cloud"}'}}]})
         def factory(**kwargs):
             return real_client(transport=httpx.MockTransport(handle), **kwargs)
-        with tempfile.TemporaryDirectory() as directory, patch('medigraph.llm.httpx.AsyncClient', side_effect=factory):
+        with tempfile.TemporaryDirectory() as directory, patch('backend.app.llm.httpx.AsyncClient', side_effect=factory):
             store = SettingsStore(directory)
             model = ModelClient(store)
             self.assertEqual(asyncio.run(model.json('test', 'test')), {'value': 'local'})
