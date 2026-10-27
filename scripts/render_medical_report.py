@@ -181,6 +181,10 @@ def main():
             )
         ax.set_xlim(0, 95 if name == "medicalretrieval" else 17)
     fig.savefig(ROOT / "docs/images/medical-recall.svg")
+    svg = ROOT / "docs/images/medical-recall.svg"
+    svg.write_text(
+        "\n".join(line.rstrip() for line in svg.read_text(encoding="utf-8").splitlines()) + "\n", encoding="utf-8"
+    )
     plt.close(fig)
 
 
