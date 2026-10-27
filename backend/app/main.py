@@ -19,16 +19,24 @@ from backend.app.teaching import routes as teaching_routes
 from backend.app.learning import routes as learning_routes
 from backend.app.evaluations import routes as evaluation_routes
 from contextlib import asynccontextmanager
+from backend.app.operations import Operations, routes as operation_routes
+from backend.app.personal import PersonalLibraries, PersonalMiddleware, shutdown as shutdown_libraries
 
 
-def create_app(data_dir=None):
+def create_app(data_dir=None, personal=None):
+    personal = data_dir is None if personal is None else personal
+
     @asynccontextmanager
     async def lifespan(application):
         application.state.jobs.recover()
+        application.state.operations.start()
         yield
+        await application.state.operations.shutdown()
         await application.state.jobs.shutdown()
+        if personal:
+            await shutdown_libraries(application.state.libraries)
 
-    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.5.0", lifespan=lifespan)
+    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.6.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","),
@@ -51,6 +59,13 @@ def create_app(data_dir=None):
     app.include_router(teaching_routes(app.state.questions, app.state.jobs))
     app.include_router(learning_routes(app.state.questions))
     app.include_router(evaluation_routes(app.state.db, app.state.retriever, app.state.model))
+    app.state.operations = Operations(app)
+    app.include_router(operation_routes(app.state.operations))
+    if personal:
+        app.state.libraries = PersonalLibraries(
+            app.state.settings.directory, lambda directory: create_app(directory, personal=False)
+        )
+        app.add_middleware(PersonalMiddleware, registry=app.state.libraries)
 
     @app.middleware("http")
     async def api_alias(request, call_next):
@@ -80,6 +95,12 @@ def create_app(data_dir=None):
     @app.get("/health")
     def health():
         return {"status": "ok", "version": app.version}
+
+    if not personal:
+
+        @app.get("/profile")
+        def local_profile():
+            return {"id": app.state.settings.directory.name, "name": "我的个人资料库", "account_login": False}
 
     @app.get("/status")
     def status():

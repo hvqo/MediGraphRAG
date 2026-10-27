@@ -5,6 +5,10 @@ Does not change the user's saved provider, sources, question bank or learner sta
 """
 
 import json
+import io
+import zipfile
+from PIL import Image
+from unittest.mock import patch
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,6 +36,11 @@ def main():
         images.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as directory:
         app = create_app(directory)
+        model_patch = patch(
+            "backend.app.operations.model_paths",
+            return_value=(Path(directory) / "missing", Path(directory) / "missing"),
+        )
+        model_patch.start()
         source = app.state.documents.add(
             "软件测试.txt",
             "软件验收规定：测试标签甲关联测试标签乙。此段只供软件测试，不是医学知识。".encode(),
@@ -67,7 +76,20 @@ def main():
             def do_POST(self):
                 payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 prompt = payload["messages"][-1]["content"]
-                if "核验以下回答" in prompt:
+                if payload["messages"][-1].get("images"):
+                    result = {"text": evidence["text"], "description": "", "warnings": []}
+                elif "从资料提炼" in prompt:
+                    values = json.JSONDecoder().raw_decode(prompt.split("资料：", 1)[1])[0]
+                    result = {
+                        "points": [
+                            {
+                                "title": "软件标签关联",
+                                "text": "只用于软件验收的标签知识点",
+                                "citations": [{"evidence_id": values[0]["evidence_id"], "quote": values[0]["text"]}],
+                            }
+                        ]
+                    }
+                elif "核验以下回答" in prompt:
                     result = {"supported": True, "reason": "软件界面验收桩"}
                 elif '输出格式：{"blocks"' in prompt:
                     result = {
@@ -218,6 +240,41 @@ def main():
                 expect(page.locator("pre").last).to_contain_text("supported")
                 assert len(client.get("/questions").json()) == 1
 
+                page.get_by_role("button", name="依据问答", exact=True).click()
+                expect(page.get_by_label("检索方式", exact=True)).to_have_count(0)
+                picture = io.BytesIO()
+                Image.new("RGB", (220, 100), "white").save(picture, format="PNG")
+                word = io.BytesIO()
+                with zipfile.ZipFile(word, "w") as archive:
+                    archive.writestr(
+                        "word/document.xml",
+                        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>'
+                        + evidence["text"]
+                        + "</w:t></w:r></w:p></w:body></w:document>",
+                    )
+                page.get_by_label("添加资料文件", exact=True).set_input_files(
+                    [
+                        {"name": "说明.txt", "mimeType": "text/plain", "buffer": evidence["text"].encode()},
+                        {"name": "图.png", "mimeType": "image/png", "buffer": picture.getvalue()},
+                        {
+                            "name": "Word.docx",
+                            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            "buffer": word.getvalue(),
+                        },
+                    ]
+                )
+                page.get_by_label("医学问题").fill("根据这些资料生成1道练习题")
+                page.get_by_role("button", name="开始处理 →", exact=True).click()
+                expect(page.get_by_role("heading", name="已根据资料生成 1 道题", exact=True)).to_be_visible(
+                    timeout=30000
+                )
+                expect(page.get_by_text("3 / 3 份文件已读取 · 原文件已自动保存", exact=True)).to_be_visible()
+                expect(page.get_by_role("button", name="核对通过，加入练习", exact=True)).to_be_visible()
+                if capture:
+                    page.get_by_text("更多工具", exact=True).click()
+                    page.evaluate("window.scrollTo(0,0)")
+                    page.screenshot(path=str(images / "upload-to-questions.png"), full_page=True)
+                    page.get_by_text("更多工具", exact=True).click()
                 folder = Path(".runtime/ui-check")
                 folder.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=str(folder / "v2-traces.png"), full_page=True)
@@ -268,11 +325,12 @@ def main():
                     json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
                 )
                 print(
-                    "V2 isolated UI check passed: 12 pages, seven complete flows, mobile layout, no browser errors; HTTP stub only."
+                    "V2 isolated UI check passed: 12 pages, eight complete flows, mobile layout, no browser errors; HTTP stub only."
                 )
         finally:
             server.should_exit = True
             thread.join(timeout=10)
+            model_patch.stop()
             model_server.shutdown()
             model_server.server_close()
 

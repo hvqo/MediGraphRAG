@@ -18,6 +18,57 @@ class FakeModel:
 
 
 class RetrievalTests(unittest.TestCase):
+    def test_incremental_vectors_resume_and_model_change_discards_partial_batches(self):
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as folder:
+            client = TestClient(create_app(folder))
+            for label in ["甲", "乙"]:
+                client.post("/documents/text", json={"title": label, "text": "糖尿病软件索引测试" + label})
+            retriever = client.app.state.retriever
+            with (
+                patch.object(
+                    retriever,
+                    "encode",
+                    side_effect=lambda rows: np.tile([[1.0, 0.0]], (len(rows), 1)).astype("float32"),
+                ) as encode,
+                patch("backend.app.retrieval.model_signature", return_value="model-a"),
+            ):
+                self.assertFalse(retriever.build_step(1)["ready"])
+                self.assertTrue(retriever.build_step(1)["ready"])
+                self.assertEqual(encode.call_count, 2)
+            with (
+                patch.object(retriever, "encode", return_value=np.array([[0.0, 1.0]], dtype="float32")) as encode,
+                patch("backend.app.retrieval.model_signature", return_value="model-b"),
+            ):
+                self.assertFalse(retriever.build_step(1)["ready"])
+                self.assertEqual(encode.call_count, 1)
+                self.assertFalse(retriever.index_status()["ready"])
+
+    def test_fast_route_prefers_dense_order_and_scoped_search_retrieves_beyond_global_top30(self):
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as folder:
+            client = TestClient(create_app(folder))
+            for index in range(35):
+                client.post("/documents/text", json={"title": str(index), "text": f"糖尿病软件标签 {index}"})
+            retriever = client.app.state.retriever
+            with patch.object(
+                retriever, "encode", side_effect=lambda rows: np.tile([[1.0, 0.0]], (len(rows), 1)).astype("float32")
+            ):
+                retriever.build()
+                settings = client.get("/settings").json()
+                settings.pop("cloud_api_key_configured")
+                settings.pop("cloud_api_key_from_environment")
+                settings["use_vectors"] = True
+                client.put("/settings", json=settings)
+                final = client.app.state.db.chunks()[0]
+                response = client.post(
+                    "/search", json={"query": "糖尿病", "document_ids": [final["document_id"]]}
+                ).json()
+                self.assertEqual(response["mode"], "vector")
+                self.assertEqual(response["items"][0]["document_id"], final["document_id"])
+
     def test_vector_index_invalidates_after_document_change(self):
         import numpy as np
 

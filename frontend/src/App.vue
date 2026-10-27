@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { navigation, primaryNavigation, moreNavigation } from "./router";
 import { useWorkspace } from "./stores/workspace";
+import { api } from "./api";
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace();
@@ -13,6 +14,7 @@ const active = computed(
   () => navigation.find((item) => item.id === view.value) || navigation[0],
 );
 const pending = computed(() => summary.value.pending);
+const profile = ref(null as { name: string } | null);
 const moreOpen = ref(false);
 watch(
   () => route.name,
@@ -26,7 +28,12 @@ const refresh = () => workspace.refresh();
 function navigate(id: string) {
   if (router.hasRoute(id)) router.push({ name: id });
 }
-onMounted(refresh);
+onMounted(async () => {
+  try {
+    profile.value = await api("/profile");
+  } catch {}
+  await refresh();
+});
 </script>
 
 <template>
@@ -52,6 +59,9 @@ onMounted(refresh);
         ><span>MediGraph<em>RAG</em><small>医学知识与出题平台</small></span></a
       >
       <p class="nav-caption">工作空间</p>
+      <small class="profile-label"
+        >{{ profile?.name || "个人资料库" }} · 自动保存</small
+      >
       <nav aria-label="主导航">
         <button
           v-for="item in primaryNavigation"

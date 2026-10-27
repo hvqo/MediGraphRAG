@@ -198,6 +198,8 @@ def routes(db, retriever, model):
     async def replay(identifier: str):
         row = trace(identifier)
         payload = row["input"]
+        if payload.get("image_count"):
+            raise HTTPException(409, "视觉调用未在运行记录中保存图片，请从原文件任务重新识别")
         if payload.get("source_revision") != await run_in_threadpool(lambda: revision(db.chunks())):
             raise HTTPException(409, "原文集合已变化，不能冒充原资料版本回放")
         settings = Settings.model_validate(payload["settings"])

@@ -1,0 +1,84 @@
+{
+  "platform": "Windows-10-10.0.22631-SP0",
+  "python": "3.10.10",
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "cuda_runtime": "12.1",
+  "packages": {
+    "torch": "2.2.2+cu121",
+    "transformers": "4.46.3",
+    "faiss-cpu": "1.7.4",
+    "numpy": "1.26.4",
+    "pyarrow": "17.0.0",
+    "Pillow": "12.3.0",
+    "pypdfium2": "4.30.0",
+    "rapidocr-onnxruntime": "1.4.4",
+    "onnxruntime": "1.23.2",
+    "opencv-python": "4.11.0.86",
+    "matplotlib": "3.9.4"
+  },
+  "ollama_version": {
+    "version": "0.11.5"
+  },
+  "ollama_models": [
+    {
+      "name": "qwen2.5:latest",
+      "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+      "size": 4683087332,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen2",
+        "families": [
+          "qwen2"
+        ],
+        "parameter_size": "7.6B",
+        "quantization_level": "Q4_K_M"
+      }
+    },
+    {
+      "name": "qwen2.5:7b",
+      "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+      "size": 4683087332,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen2",
+        "families": [
+          "qwen2"
+        ],
+        "parameter_size": "7.6B",
+        "quantization_level": "Q4_K_M"
+      }
+    },
+    {
+      "name": "qwen2.5vl:7b",
+      "digest": "5ced39dfa4bac325dc183dd1e4febaa1c46b3ea28bce48896c8e69c1e79611cc",
+      "size": 5969245856,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen25vl",
+        "families": [
+          "qwen25vl"
+        ],
+        "parameter_size": "8.3B",
+        "quantization_level": "Q4_K_M"
+      }
+    },
+    {
+      "name": "qwen:7b",
+      "digest": "2091ee8c8d8f27f790c298265b1353da099a276e6c612e3b4864e72f1993cc33",
+      "size": 4511914544,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen2",
+        "families": [
+          "qwen2"
+        ],
+        "parameter_size": "8B",
+        "quantization_level": "Q4_0"
+      }
+    }
+  ]
+}

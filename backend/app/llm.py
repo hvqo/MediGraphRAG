@@ -65,7 +65,7 @@ class ModelClient:
         except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
             return {"ok": False, "message": "无法连接模型服务，请检查地址、网络或凭据"}
 
-    async def json(self, system, prompt):
+    async def json(self, system, prompt, images=None):
         started, output, error = time.perf_counter(), None, ""
         self.usage = (None, None)
         settings = self.store.get()
@@ -73,7 +73,7 @@ class ModelClient:
 
         source_revision = revision(self.db.chunks()) if self.db else ""
         try:
-            output = await self._json(system, prompt)
+            output = await self._json(system, prompt, images) if images else await self._json(system, prompt)
             return output
         except ModelError as exc:
             error = str(exc)
@@ -104,6 +104,7 @@ class ModelClient:
                                     "prompt": prompt,
                                     "settings": settings.model_dump(),
                                     "source_revision": source_revision,
+                                    "image_count": len(images or []),
                                 },
                                 ensure_ascii=False,
                             ),
@@ -113,9 +114,19 @@ class ModelClient:
                         ),
                     )
 
-    async def _json(self, system, prompt):
+    async def vision_json(self, system, prompt, images, model_name="qwen2.5vl:7b"):
+        client = self.snapshot("vision", "document-vision-v1")
+        settings = client.store.get()
+        settings.ollama_model = model_name
+        # Visual document processing uses the local service even when text generation is cloud-based.
+        settings.provider = "ollama"
+        return await client.json(system, prompt, images)
+
+    async def _json(self, system, prompt, images=None):
         settings = self.store.get()
         messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+        if images:
+            messages[-1]["images"] = images
         try:
             async with httpx.AsyncClient(timeout=settings.request_timeout, trust_env=False) as client:
                 if settings.provider == "ollama":
@@ -126,7 +137,11 @@ class ModelClient:
                             "messages": messages,
                             "stream": False,
                             "format": "json",
-                            "options": {"temperature": 0.15, "num_ctx": 8192},
+                            "options": {
+                                "temperature": 0.15,
+                                "num_ctx": 4096 if images else 8192,
+                                **({"num_predict": 1500} if images else {}),
+                            },
                         },
                     )
                     response.raise_for_status()

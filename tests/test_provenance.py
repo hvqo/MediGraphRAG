@@ -13,9 +13,9 @@ class ProvenanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             first = Database(directory)
             second = Database(directory)
-            self.assertEqual(len(second.rows("SELECT * FROM schema_migrations")), 4)
+            self.assertEqual(len(second.rows("SELECT * FROM schema_migrations")), 5)
             with first.connect() as connection:
-                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
+                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
 
     def test_version_change_retires_old_evidence_and_flags_question(self):
         with tempfile.TemporaryDirectory() as directory:

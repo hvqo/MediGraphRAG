@@ -97,8 +97,12 @@ class RelationStore:
             )
         return next(r for r in self.list() if r["id"] == identifier)
 
-    def paths(self, query, depth=2):
-        rows = [r for r in self.list() if r["effective_status"] == "approved"]
+    def paths(self, query, depth=2, include_mentions=True):
+        rows = [
+            r
+            for r in self.list()
+            if r["effective_status"] in (["approved", "literal_verified"] if include_mentions else ["approved"])
+        ]
         seeds = {name for r in rows for name in (r["subject"], r["object"]) if name.casefold() in query.casefold()}
         queue = deque((name, [], {name}) for name in sorted(seeds))
         result, seen = [], set()

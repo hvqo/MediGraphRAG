@@ -20,6 +20,7 @@ const labels: Record<string, string> = {
   approved: "已通过",
   rejected: "已驳回",
   outdated: "依据失效",
+  literal_verified: "原文提及已核对",
 };
 const items = ref<Relation[]>([]),
   documents = ref<DocumentInfo[]>([]),

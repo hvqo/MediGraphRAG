@@ -39,6 +39,18 @@ def main():
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(channel="chrome", headless=False, args=["--headless=new"])
                 page = browser.new_page(viewport={"width": 1440, "height": 1000})
+                page.context.add_cookies(
+                    [
+                        {
+                            "name": cookie.name,
+                            "value": cookie.value,
+                            "url": base,
+                            "httpOnly": True,
+                            "sameSite": "Strict",
+                        }
+                        for cookie in client.cookies.jar
+                    ]
+                )
                 errors = []
                 page.on("console", lambda m: print("PDF console:", m.text) if m.type in ("warning", "error") else None)
                 page.on("pageerror", lambda e: errors.append(str(e)))

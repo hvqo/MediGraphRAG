@@ -21,6 +21,7 @@ class GenerationRequest(BaseModel):
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     count: int = Field(default=1, ge=1, le=10)
     document_id: str | None = None
+    document_ids: list[str] = Field(default_factory=list, max_length=100)
     evidence_ids: list[str] = Field(default_factory=list, max_length=20)
     chapter: str = Field(default="", max_length=300)
     knowledge_point: str = Field(default="", max_length=200)
@@ -249,7 +250,12 @@ class GenerationJobs:
         try:
             self.store.update_job(identifier, status="running", stage="检索原文依据", progress=5)
             result = await run_in_threadpool(
-                self.retriever.search, request.query, None, request.document_id, request.evidence_ids
+                self.retriever.search,
+                request.query,
+                None,
+                request.document_id,
+                request.evidence_ids,
+                document_ids=request.document_ids or None,
             )
             evidence = result["items"]
             case = approved_case(self.store.db, request.case_id) if request.case_id else None

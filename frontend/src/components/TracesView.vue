@@ -17,6 +17,7 @@ type Trace = {
     system: string;
     prompt: string;
     source_revision: string;
+    image_count?: number;
     settings: Record<string, unknown>;
   };
   output?: unknown;
@@ -141,7 +142,11 @@ onActivated(() => load().catch((e) => (error.value = e.message)));
     <h3>原始结构化结果</h3>
     <pre class="diff">{{ JSON.stringify(selected.output, null, 2) }}</pre>
     <p v-if="selected.error" class="notice error">{{ selected.error }}</p>
-    <button class="primary" :disabled="busy" @click="rerun">
+    <button
+      class="primary"
+      :disabled="busy || !!selected.input?.image_count"
+      @click="rerun"
+    >
       用原配置再次调用
     </button>
     <p class="help">

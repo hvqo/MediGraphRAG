@@ -26,6 +26,20 @@
   padding: 12px 0;
   color: #637f81;
 }
+.upload-composer {
+  padding: 12px 0 18px;
+  border-bottom: 1px solid #e1e9e6;
+}
+.upload-composer > button {
+  margin-right: 12px;
+}
+.upload-composer .tag {
+  margin-top: 8px;
+}
+.profile-label {
+  padding: 0 10px 12px;
+  font-size: 11px;
+}
 .query-options .inline {
   margin-top: 12px;
 }

@@ -51,6 +51,15 @@ MIGRATIONS = [
         report TEXT NOT NULL,created_at TEXT NOT NULL);
     """,
     ),
+    (
+        5,
+        "persistent priority operations",
+        """
+      CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,status TEXT NOT NULL,instruction TEXT NOT NULL,
+      intent TEXT NOT NULL,manifest TEXT NOT NULL,progress TEXT NOT NULL,result TEXT NOT NULL,error TEXT NOT NULL,
+      created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+    """,
+    ),
 ]
 
 

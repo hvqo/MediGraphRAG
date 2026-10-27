@@ -15,6 +15,7 @@ def main(argv=None):
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true")
+    parser.add_argument("--library", help="Local personal library ID for offline commands")
     commands = parser.add_subparsers(dest="command")
     serve = commands.add_parser("serve", help="Start API and the built Vue frontend")
     serve.add_argument("--host", default="127.0.0.1")
@@ -52,6 +53,21 @@ def main(argv=None):
         return 0
     try:
         settings = SettingsStore()
+        registry = settings.directory / "personal-libraries.json"
+        records = json.loads(registry.read_text(encoding="utf-8")) if registry.exists() else []
+        if records:
+            selected = (
+                next((r for r in records if r["id"] == args.library), None)
+                if args.library
+                else records[0]
+                if len(records) == 1
+                else None
+            )
+            if not selected:
+                parser.error("Multiple personal libraries or unknown ID; pass --library with a local ID")
+            settings = SettingsStore(settings.directory / "libraries" / selected["id"])
+        elif args.library:
+            parser.error("Personal library not found")
         db = Database(settings.directory)
         store = DocumentStore(db)
         retriever = Retriever(db, settings)

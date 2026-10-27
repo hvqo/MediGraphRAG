@@ -1,3 +1,5 @@
+> 此页是0.5功能/弱标注实验；0.6已完成真实向量与公共医学实测。 最新行为与数据以[医学评测](MEDICAL_BENCHMARK.md)和[个人工作台](PERSONAL_WORKSPACE.md)为准。旧“向量/多模态未测”为历史状态。
+
 # 检索实测报告与结论
 
 日期：2026-10-27。方法实现：`backend/app/retrieval.py`、`routing.py` 与 `relations.py`。

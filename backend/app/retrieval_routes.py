@@ -10,6 +10,7 @@ class Query(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     top_k: int | None = Field(default=None, ge=1, le=10)
     document_id: str | None = None
+    document_ids: list[str] = Field(default_factory=list, max_length=100)
     evidence_ids: list[str] = Field(default_factory=list, max_length=20)
     mode: Literal["auto", "keyword", "vector", "graph", "hybrid"] = "auto"
 
@@ -23,12 +24,20 @@ def routes(retriever, model):
 
     @router.post("/search")
     def search(value: Query):
-        return retriever.search(value.query, value.top_k, value.document_id, value.evidence_ids, value.mode)
+        return retriever.search(
+            value.query, value.top_k, value.document_id, value.evidence_ids, value.mode, value.document_ids or None
+        )
 
     @router.post("/ask")
     async def ask(value: Query):
         result = await run_in_threadpool(
-            retriever.search, value.query, value.top_k, value.document_id, value.evidence_ids, value.mode
+            retriever.search,
+            value.query,
+            value.top_k,
+            value.document_id,
+            value.evidence_ids,
+            value.mode,
+            value.document_ids or None,
         )
         answer = await answer_question(model, value.query, result)
         answer["retrieval"] = result

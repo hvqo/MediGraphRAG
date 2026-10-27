@@ -92,7 +92,23 @@ class SettingsStore:
 
 
 def model_paths():
+    managed = ROOT / ".runtime/models/bge-large-zh-v1.5"
+    managed_reranker = ROOT / ".runtime/models/bge-reranker-base"
     return (
-        Path(os.getenv("MEDIGRAPH_EMBEDDING_PATH", ROOT / "model/bge-large-zh-v1.5")),
-        Path(os.getenv("MEDIGRAPH_RERANKER_PATH", ROOT / "model/bge-reranker-v2-m3")),
+        Path(
+            os.getenv(
+                "MEDIGRAPH_EMBEDDING_PATH",
+                managed
+                if (managed / "pytorch_model.bin").exists() or (managed / "model.safetensors").exists()
+                else ROOT / "model/bge-large-zh-v1.5",
+            )
+        ),
+        Path(
+            os.getenv(
+                "MEDIGRAPH_RERANKER_PATH",
+                managed_reranker
+                if (managed_reranker / "model.safetensors").exists()
+                else ROOT / "model/bge-reranker-v2-m3",
+            )
+        ),
     )

@@ -188,6 +188,19 @@ class DocumentStore:
         if existing:
             return {**self._public(existing[0]), "duplicate": True}
         units, warnings, page_count, extras = self._parse(content, suffix, parser)
+        return self._save(filename, content, title, units, warnings, page_count, extras, parser)
+
+    def add_extracted(self, filename, content, units, warnings, pages, extras=None):
+        with self.lock:
+            suffix = Path(filename).suffix.lower()
+            identifier = hashlib.sha256(suffix.encode() + b"\0" + content).hexdigest()
+            if self.db.rows("SELECT id FROM documents WHERE id=?", (identifier,)):
+                return {**self.get(identifier), "duplicate": True}
+            return self._save(filename, content, None, units, warnings, pages, extras or {}, "automatic")
+
+    def _save(self, filename, content, title, units, warnings, page_count, extras, parser):
+        suffix = Path(filename).suffix.lower()
+        identifier = hashlib.sha256(suffix.encode() + b"\0" + content).hexdigest()
         chunks = split_chunks(identifier, units)
         row = {
             "id": identifier,

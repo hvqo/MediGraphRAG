@@ -8,6 +8,7 @@ import re
 import threading
 import unicodedata
 import time
+import os
 
 from .config import ROOT, model_paths
 
@@ -102,11 +103,11 @@ def reranker(path, device, signature):
     return tokenizer, model
 
 
-def embed(texts, device):
+def embed(texts, device, model_path=None):
     import numpy as np
     import torch
 
-    path, _ = model_paths()
+    path = Path(model_path) if model_path else model_paths()[0]
     tokenizer, model = encoder(str(path), device, model_signature(path))
     batches = []
     for start in range(0, len(texts), 16):
@@ -126,13 +127,45 @@ class Retriever:
         self.index_path = db.directory / "vectors.index"
         self.meta_path = db.directory / "vectors.json"
         self.lock = threading.RLock()
+        self.lexical_cache = None
+
+    def embedding_path(self):
+        if os.getenv("MEDIGRAPH_EMBEDDING_PATH"):
+            return model_paths()[0]
+        english = ROOT / ".runtime/models/bge-small-en-v1.5"
+        sample = "".join(r["text"][:200] for r in self.db.rows("SELECT text FROM chunks LIMIT 64"))
+        if (
+            sample
+            and len(re.findall(r"[\u4e00-\u9fff]", sample)) / len(sample) < 0.05
+            and (english / "model.safetensors").exists()
+        ):
+            return english
+        return model_paths()[0]
+
+    def encode(self, texts):
+        path = self.embedding_path()
+        return (
+            embed(texts, self.settings.get().device)
+            if path == model_paths()[0]
+            else embed(texts, self.settings.get().device, path)
+        )
+
+    def query_text(self, query):
+        name = self.embedding_path().name.lower()
+        if "bge" not in name:
+            return query
+        return (
+            "为这个句子生成表示以用于检索相关文章："
+            if "zh" in name
+            else "Represent this sentence for searching relevant passages: "
+        ) + query
 
     def index_status(self):
         if not self.meta_path.exists() or not self.index_path.exists():
             return {"ready": False, "message": "尚未建立向量索引"}
         try:
             metadata = json.loads(self.meta_path.read_text(encoding="utf-8"))
-            path = model_paths()[0]
+            path = self.embedding_path()
             ready = (
                 metadata["revision"] == revision(self.db.chunks())
                 and metadata.get("embedding_path") == str(path)
@@ -153,7 +186,7 @@ class Retriever:
             chunks = self.db.chunks()
             if not chunks:
                 raise ValueError("请先导入资料")
-            vectors = embed([item["text"] for item in chunks], self.settings.get().device)
+            vectors = self.encode([item["text"] for item in chunks])
             index = faiss.IndexFlatIP(vectors.shape[1])
             index.add(vectors)
             temporary = str(self.index_path) + ".tmp"
@@ -162,8 +195,8 @@ class Retriever:
             meta = {
                 "revision": revision(chunks),
                 "ids": [item["id"] for item in chunks],
-                "embedding_path": str(model_paths()[0]),
-                "model_signature": model_signature(model_paths()[0]),
+                "embedding_path": str(self.embedding_path()),
+                "model_signature": model_signature(self.embedding_path()),
                 "pooling": "normalized_cls_v1",
             }
             temporary_meta = self.meta_path.with_suffix(".tmp")
@@ -171,7 +204,20 @@ class Retriever:
             temporary_meta.replace(self.meta_path)
             return {"ready": True, "count": len(chunks)}
 
-    def search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="auto"):
+    def search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="auto", document_ids=None):
+        if document_ids is not None:
+            allowed = set(document_ids)
+            scoped = [c["id"] for c in self.db.chunks() if c["document_id"] in allowed]
+            evidence_ids = list(set(scoped).intersection(evidence_ids)) if evidence_ids else scoped
+            if not evidence_ids:
+                return {
+                    "items": [],
+                    "mode": "keyword",
+                    "paths": [],
+                    "warnings": ["指定资料中尚无可检索内容"],
+                    "requested_mode": mode,
+                    "elapsed_ms": 0,
+                }
         started = time.perf_counter()
         if mode != "auto":
             result = self._search(query, top_k, document_id, evidence_ids, mode)
@@ -184,7 +230,7 @@ class Retriever:
             def deepen():
                 if not self.db.rows("SELECT id FROM relations WHERE status='approved' LIMIT 1"):
                     return None, False, "尚无已审核关系，保留快速检索结果"
-                found = self._search(query, top_k, document_id, evidence_ids, "hybrid")
+                found = self._search(query, top_k, document_id, evidence_ids, "hybrid", approved_only=True)
                 return (
                     (found, True, "")
                     if found["paths"]
@@ -220,7 +266,62 @@ class Retriever:
         result["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 3)
         return result
 
-    def _search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="hybrid"):
+    def build_step(self, batch_size=16):
+        """Persist one vector batch, yielding to newly queued foreground work between steps."""
+        import numpy as np
+        import faiss
+
+        with self.lock:
+            chunks = self.db.chunks()
+            if not chunks:
+                raise ValueError("没有可索引资料")
+            fingerprint = revision(chunks)
+            model_path = self.embedding_path()
+            signature = model_signature(model_path)
+            build_key = hashlib.sha256(
+                (fingerprint + str(model_path) + signature + str(batch_size)).encode()
+            ).hexdigest()
+            root = self.db.directory / "vector-building" / build_key
+            root.mkdir(parents=True, exist_ok=True)
+            cursor = 0
+            blocks = []
+            for start in range(0, len(chunks), batch_size):
+                path = root / f"{start}.npy"
+                if not path.exists():
+                    break
+                blocks.append(path)
+                cursor = start + len(chunks[start : start + batch_size])
+            if cursor < len(chunks):
+                path = root / f"{cursor}.npy"
+                values = self.encode([c["text"] for c in chunks[cursor : cursor + batch_size]])
+                with path.with_suffix(".tmp").open("wb") as stream:
+                    np.save(stream, values)
+                path.with_suffix(".tmp").replace(path)
+                blocks.append(path)
+                cursor += len(values)
+            if cursor < len(chunks):
+                return {"ready": False, "processed": cursor, "total": len(chunks)}
+            if revision(self.db.chunks()) != fingerprint:
+                return {"ready": False, "processed": 0, "total": len(chunks), "changed": True}
+            vectors = np.concatenate([np.load(p) for p in blocks]).astype("float32")
+            index = faiss.IndexFlatIP(vectors.shape[1])
+            index.add(vectors)
+            temporary = str(self.index_path) + ".tmp"
+            faiss.write_index(index, temporary)
+            Path(temporary).replace(self.index_path)
+            meta = {
+                "revision": fingerprint,
+                "ids": [c["id"] for c in chunks],
+                "embedding_path": str(model_path),
+                "model_signature": signature,
+                "pooling": "normalized_cls_v1",
+            }
+            temp = self.meta_path.with_suffix(".tmp")
+            temp.write_text(json.dumps(meta), encoding="utf-8")
+            temp.replace(self.meta_path)
+            return {"ready": True, "processed": cursor, "total": len(chunks)}
+
+    def _search(self, query, top_k=None, document_id=None, evidence_ids=None, mode="hybrid", approved_only=False):
         chunks = self.db.chunks()
         if document_id:
             chunks = [item for item in chunks if item["document_id"] == document_id]
@@ -236,24 +337,13 @@ class Retriever:
                 "paths": [],
                 "warnings": ["当前范围没有可检索的原文，请导入资料或调整范围"],
             }
-        counts = [Counter(tokens(item["text"])) for item in chunks]
-        query_terms = set(tokens(query))
-        average = sum(sum(item.values()) for item in counts) / len(counts) or 1
-        frequencies = Counter(term for item in counts for term in item)
-        scores = []
-        for index, (chunk, terms) in enumerate(zip(chunks, counts)):
-            score = 0.0
-            length = sum(terms.values())
-            for term in query_terms:
-                count = terms[term]
-                if count:
-                    inverse = math.log(1 + (len(chunks) - frequencies[term] + 0.5) / (frequencies[term] + 0.5))
-                    score += inverse * count * 2.2 / (count + 1.2 * (0.25 + 0.75 * length / average))
-            if query.lower() in chunk["text"].lower():
-                score += 2
-            if score:
-                scores.append((index, score))
-        lexical = sorted(scores, key=lambda item: item[1], reverse=True)[:30]
+        from .ranking import LexicalIndex
+
+        fingerprint = revision(chunks)
+        with self.lock:
+            if not self.lexical_cache or self.lexical_cache[0] != fingerprint:
+                self.lexical_cache = (fingerprint, LexicalIndex([item["text"] for item in chunks], tokens))
+            lexical = self.lexical_cache[1].rank(query, 30)
         ranks = (
             {index: 1 / (60 + rank) for rank, (index, _) in enumerate(lexical, 1)}
             if mode in ("keyword", "hybrid", "fast")
@@ -269,7 +359,7 @@ class Retriever:
             ),
             [],
         )
-        seeds = entities(query, 5) if mode == "hybrid" else []
+        seeds = entities(query, 5) if mode == "hybrid" and not approved_only else []
         if seeds and mode == "hybrid":
             neighbors = Counter(
                 name for index, _ in lexical[:3] for name in entities(chunks[index]["text"]) if name not in seeds
@@ -285,7 +375,11 @@ class Retriever:
                 modes.append("cooccurrence")
         from .relations import RelationStore
 
-        paths = RelationStore(self.db).paths(query) if mode in ("graph", "hybrid") else []
+        paths = (
+            RelationStore(self.db).paths(query, include_mentions=not approved_only)
+            if mode in ("graph", "hybrid")
+            else []
+        )
         allowed = {c["id"] for c in chunks}
         paths = [path for path in paths if all(edge["evidence_id"] in allowed for edge in path)]
         if paths:
@@ -310,8 +404,13 @@ class Retriever:
                         if metadata["revision"] != revision(self.db.chunks()):
                             raise ValueError("Index changed during search")
                         index = faiss.read_index(str(self.index_path))
-                        distances, positions = index.search(embed([query], config.device), min(30, index.ntotal))
+                        distances, positions = index.search(
+                            self.encode([self.query_text(query)]),
+                            index.ntotal if document_id or evidence_ids else min(30, index.ntotal),
+                        )
                     lookup = {item["id"]: number for number, item in enumerate(chunks)}
+                    # Fast auto routing uses dense ranking; preserve lexical scores only on vector failure.
+                    dense_ranks = {}
                     for rank, (position, distance) in enumerate(zip(positions[0], distances[0]), 1):
                         if (
                             0 <= position < len(metadata["ids"])
@@ -319,8 +418,19 @@ class Retriever:
                             and metadata["ids"][position] in lookup
                         ):
                             number = lookup[metadata["ids"][position]]
-                            ranks[number] = ranks.get(number, 0) + 1 / (60 + rank)
-                    modes.append("vector")
+                            dense_ranks[number] = 1 / (60 + len(dense_ranks) + 1)
+                            if mode != "fast":
+                                ranks[number] = ranks.get(number, 0) + 1 / (60 + rank)
+                    if (mode == "fast" or approved_only) and dense_ranks:
+                        ranks = dense_ranks
+                        modes = ["vector"]
+                        if approved_only and paths:
+                            for number, chunk in enumerate(chunks):
+                                if chunk["id"] in supported_ids:
+                                    ranks[number] = ranks.get(number, 0) + 1 / 61
+                            modes.append("reviewed_relations")
+                    else:
+                        modes.append("vector")
                 except (ImportError, OSError, RuntimeError, ValueError):
                     warnings.append("向量检索不可用" + ("；本次使用关键词检索" if mode in ("hybrid", "fast") else ""))
         selected = sorted(ranks, key=lambda number: ranks[number], reverse=True)[:20]
@@ -329,6 +439,13 @@ class Retriever:
                 import torch
 
                 _, path = model_paths()
+                english_reranker = ROOT / ".runtime/models/ms-marco-MiniLM-L6-v2"
+                if (
+                    not os.getenv("MEDIGRAPH_RERANKER_PATH")
+                    and "small-en" in self.embedding_path().name
+                    and (english_reranker / "model.safetensors").exists()
+                ):
+                    path = english_reranker
                 with self.lock:
                     tokenizer, model = reranker(str(path), config.device, model_signature(path))
                     inputs = tokenizer(

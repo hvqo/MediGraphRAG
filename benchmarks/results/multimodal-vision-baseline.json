@@ -1,0 +1,45 @@
+{
+  "source": "https://github.com/pubmedqa/pubmedqa",
+  "pmid": "15703931",
+  "vision_model": "qwen2.5vl:7b",
+  "generation_model": "qwen2.5",
+  "scope": "One clean machine-printed abstract rendered to PNG/scanned PDF/embedded Word image; functional smoke test, not representative OCR or clinical accuracy. All original text stays in ignored runtime.",
+  "files": [
+    {
+      "filename": "medical.png",
+      "status": "ready",
+      "character_error_rate": 0.0,
+      "chunks": 1
+    },
+    {
+      "filename": "scanned.pdf",
+      "status": "ready",
+      "character_error_rate": 0.022167487684729065,
+      "chunks": 1
+    },
+    {
+      "filename": "medical.docx",
+      "status": "ready",
+      "character_error_rate": 0.0,
+      "chunks": 2
+    }
+  ],
+  "foreground_seconds": 431.7305553999613,
+  "request_status": "completed",
+  "error": "",
+  "generated_questions": 1,
+  "single_question_api_seconds": 19.229528299998492,
+  "single_question_http_status": 200,
+  "single_question_answer_status": "draft",
+  "archive_status": "completed",
+  "background": {
+    "vectors": "ready",
+    "graph": "ready",
+    "graph_cursor": 4,
+    "vector_progress": {
+      "processed": 4,
+      "total": 4
+    }
+  },
+  "index_ready": true
+}
