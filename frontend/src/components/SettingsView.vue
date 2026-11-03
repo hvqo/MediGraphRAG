@@ -9,6 +9,18 @@ const form = ref(null),
   message = ref(""),
   busy = ref(false);
 const emit = defineEmits(["changed"]);
+async function testReview() {
+  await save(false);
+  if (error.value) return;
+  busy.value = true;
+  try {
+    message.value = (await send("/settings/test-review", {})).message;
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    busy.value = false;
+  }
+}
 async function load() {
   [form.value, status.value, index.value] = await Promise.all([
     api("/settings"),
@@ -72,6 +84,55 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
   <form v-if="form" class="settings-layout" @submit.prevent="save(false)">
     <section class="panel stack">
       <h2>生成模型</h2>
+      <div
+        v-if="form.review_provider === 'cloud' && form.provider !== 'cloud'"
+        class="stack"
+      >
+        <label
+          >审题云端接口地址<input
+            v-model="form.cloud_base_url"
+            type="url"
+            placeholder="https://服务商地址/v1" /></label
+        ><label>云端默认模型<input v-model="form.cloud_model" /></label
+        ><label
+          >审题云端密钥<input
+            type="password"
+            :value="key || ''"
+            @input="key = $event.target.value"
+            placeholder="留空保持已存储密钥"
+            autocomplete="new-password"
+        /></label>
+      </div>
+      <label
+        v-if="form.review_provider === 'ollama' && form.provider !== 'ollama'"
+        >审题本地服务地址<input v-model="form.ollama_base_url" type="url"
+      /></label>
+      <button
+        type="button"
+        class="secondary"
+        :disabled="busy"
+        @click="testReview"
+      >
+        保存并检查审题连接
+      </button>
+      <label
+        >审题模型来源<select
+          aria-label="审题模型来源"
+          v-model="form.review_provider"
+        >
+          <option value="same">与生成模型相同</option>
+          <option value="ollama">本地 Ollama</option>
+          <option value="cloud">云端模型</option>
+        </select></label
+      >
+      <label v-if="form.review_provider !== 'same'"
+        >审题模型名称<input
+          v-model="form.review_model"
+          placeholder="留空使用所选来源的默认模型"
+      /></label>
+      <p class="help">
+        审题可独立选择模型；服务地址与密钥使用下方对应来源的设置。同一模型复核会在题目记录中注明。
+      </p>
       <fieldset class="provider-choice">
         <legend class="sr-only">模型提供方式</legend>
         <label :class="{ chosen: form.provider === 'ollama' }"
@@ -190,7 +251,10 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
         }}。不可用时保留关键词检索结果，并显示提示。
       </p>
       <label
-        >检索模型运行设备<select v-model="form.device">
+        >检索模型运行设备<select
+          aria-label="检索模型运行设备"
+          v-model="form.device"
+        >
           <option value="cpu">CPU（为生成模型保留显存）</option>
           <option value="cuda">NVIDIA GPU</option>
         </select></label

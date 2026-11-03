@@ -1,0 +1,2088 @@
+{
+  "schema": 1,
+  "suite": "functional",
+  "created_at": "2026-10-26T19:15:19.715884+00:00",
+  "dataset": {
+    "kind": "self-authored non-clinical functional test",
+    "seed": null,
+    "expert_reviewed": false,
+    "bias": "Queries and graph share a constructed schema, and relationship queries contain routing rule words. Not an independent policy benchmark."
+  },
+  "documents": 48,
+  "chunks": 48,
+  "top_k": 5,
+  "repeats": 5,
+  "source_revision": "72df4a4f21e09b9a5853a1f09867c93b96176302f2db0f17790287b41636b42a",
+  "environment": {
+    "python": "3.10.10",
+    "platform": "Windows-10-10.0.22631-SP0",
+    "cpu": "",
+    "device": "cpu",
+    "concurrency": 1
+  },
+  "code_sha256": {
+    "routing.py": "d7fd806029ec618f535a65ef4dbf3eb277a2b9a9e68e0271fcd539838600b24b",
+    "retrieval.py": "78eb4bef35407c4a4d15767fdbc621c1275b29c1c4da5eaf40814d7bd92e094c",
+    "relations.py": "e42c55c22ad65f7e4b81324fc83d1b9c5a917afaf70bfcfbf66dcc7e51dee7a9"
+  },
+  "settings": {
+    "provider": "ollama",
+    "ollama_base_url": "http://127.0.0.1:11434",
+    "ollama_model": "qwen2.5",
+    "cloud_base_url": "",
+    "cloud_model": "",
+    "top_k": 5,
+    "use_vectors": false,
+    "use_reranker": false,
+    "device": "cpu",
+    "request_timeout": 180,
+    "review_provider": "same",
+    "review_model": ""
+  },
+  "latency_scope": "In-process warm retrieval including DB, tokenizer, routing, graph; excludes HTTP, indexing, answer generation and review.",
+  "answer_accuracy": null,
+  "clinical_accuracy": null,
+  "methods": [
+    {
+      "mode": "keyword",
+      "available": true,
+      "independent_queries": 20,
+      "timed_calls": 100,
+      "recall_at_k": 0.75,
+      "precision_at_k": 0.2,
+      "hit_at_k": 1,
+      "mrr": 1.0,
+      "absent_empty_rate": 1,
+      "latency_ms": {
+        "p50": 2.7662500215228647,
+        "p95": 4.441099998075515,
+        "mean": 2.988516001496464
+      },
+      "categories": {
+        "direct": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 1.0
+        },
+        "two_hop": {
+          "queries": 8,
+          "recall_at_k": 0.5,
+          "mrr": 1.0
+        }
+      },
+      "results": [
+        {
+          "id": "lookup-1",
+          "category": "direct",
+          "query": "初始码-001的登记编号是什么",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-1",
+          "category": "two_hop",
+          "query": "初始码-001的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "0933879c81f666e60febb8eb846e32b4",
+            "cd47d0adf73b7ee19372d9007664ac61",
+            "be954abfd55b04586dbcf00f8cc96c68",
+            "ea69bfd815341e09fcd6be595d46d0da"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-2",
+          "category": "direct",
+          "query": "初始码-002的登记编号是什么",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad"
+          ],
+          "returned_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-2",
+          "category": "two_hop",
+          "query": "初始码-002的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94"
+          ],
+          "returned_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "dae0d36e693ed12c0e5216fecf62e46d",
+            "02340c20f7f69c8f2c86c901cc27c12a",
+            "19d04f574931356ec4f0e384c5e1a90a",
+            "636e6286062f86a6f5d8eca9434ff53c"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-3",
+          "category": "direct",
+          "query": "初始码-003的登记编号是什么",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-3",
+          "category": "two_hop",
+          "query": "初始码-003的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "ba07d9396edf866778b72fc55ce3c2f8",
+            "9101508763f9a2a562da941d55a58937",
+            "ebcc420e2a25f939dd70fe31e789b043",
+            "aaf5e5711f346cc950c93c5142c5623f"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-4",
+          "category": "direct",
+          "query": "初始码-004的登记编号是什么",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89"
+          ],
+          "returned_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-4",
+          "category": "two_hop",
+          "query": "初始码-004的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86"
+          ],
+          "returned_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "59f3d6b50273e7bef49e65c53653618f",
+            "8b3f548922d9fc0aba84123e5e76d711",
+            "5b7e441c4e7925f1c622899058ff54dd",
+            "e726bcbf0002a083782d178d266d194a"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-5",
+          "category": "direct",
+          "query": "初始码-005的登记编号是什么",
+          "expected_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "828099d7faf9834f97592dacd897341a",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-5",
+          "category": "two_hop",
+          "query": "初始码-005的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "f40e2e71069fde7279bf4d081dee49c8",
+            "2fde8d273a67a7bbf448827ba2ea1de6",
+            "692e95654282ac87cde0a2b0136f9f67",
+            "f677ec178faeb6d8d09a2a803900ffbd"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-6",
+          "category": "direct",
+          "query": "初始码-006的登记编号是什么",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd"
+          ],
+          "returned_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-6",
+          "category": "two_hop",
+          "query": "初始码-006的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec"
+          ],
+          "returned_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "d616e60931a2acfc23b0f9f9e98c4197",
+            "00b52454b6193bbc67ad8a8f81c1a139",
+            "91e0b4db19f2e062858fc2b57ffad0b0",
+            "c887f5e710819ea364bf742f08ed8d11"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-7",
+          "category": "direct",
+          "query": "初始码-007的登记编号是什么",
+          "expected_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-7",
+          "category": "two_hop",
+          "query": "初始码-007的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "640635c5359ba4dbb39fd7a2734ee4ba",
+            "de51bfc9074f88519123836b7437463f",
+            "7aa4ed13d9235cb82445ef84bdfa67ab",
+            "53a966a20ab94280dfb0997ed5c1b908"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-8",
+          "category": "direct",
+          "query": "初始码-008的登记编号是什么",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-8",
+          "category": "two_hop",
+          "query": "初始码-008的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "41b8d467661d00866e5319b614b3fb70",
+            "380df7f8cec64624822740f1dedc049b",
+            "49375f5a63981b4ee690e15c5e65f2a4",
+            "fa81528dfa95416cc60cea6a2c219ba3"
+          ],
+          "recall": 0.5,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-0",
+          "category": "absent",
+          "query": "火星气象观测",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-1",
+          "category": "absent",
+          "query": "珊瑚海域洋流",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-2",
+          "category": "absent",
+          "query": "古建筑壁画年代",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-3",
+          "category": "absent",
+          "query": "遥感卫星轨道",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "mode": "vector",
+      "available": false,
+      "reason": "No real embedding weights/index; not executed."
+    },
+    {
+      "mode": "graph",
+      "available": true,
+      "independent_queries": 20,
+      "timed_calls": 100,
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.30000000000000004,
+      "hit_at_k": 1,
+      "mrr": 0.90625,
+      "absent_empty_rate": 1,
+      "latency_ms": {
+        "p50": 4.590650001773611,
+        "p95": 6.062400003429502,
+        "mean": 4.761140999617055
+      },
+      "categories": {
+        "direct": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 0.8125
+        },
+        "two_hop": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 1.0
+        }
+      },
+      "results": [
+        {
+          "id": "lookup-1",
+          "category": "direct",
+          "query": "初始码-001的登记编号是什么",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-1",
+          "category": "two_hop",
+          "query": "初始码-001的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-2",
+          "category": "direct",
+          "query": "初始码-002的登记编号是什么",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad"
+          ],
+          "returned_ids": [
+            "e5c5bc7a564268549ccb1fba553d2c94",
+            "9f3588f480cf5c3080a5c039093e43ad"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 0.5,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-2",
+          "category": "two_hop",
+          "query": "初始码-002的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94"
+          ],
+          "returned_ids": [
+            "e5c5bc7a564268549ccb1fba553d2c94",
+            "9f3588f480cf5c3080a5c039093e43ad"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-3",
+          "category": "direct",
+          "query": "初始码-003的登记编号是什么",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-3",
+          "category": "two_hop",
+          "query": "初始码-003的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-4",
+          "category": "direct",
+          "query": "初始码-004的登记编号是什么",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89"
+          ],
+          "returned_ids": [
+            "ea1ed806c74d087813343abea6af8a86",
+            "4f5ef625fca47af180feed99fabecb89"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 0.5,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-4",
+          "category": "two_hop",
+          "query": "初始码-004的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86"
+          ],
+          "returned_ids": [
+            "ea1ed806c74d087813343abea6af8a86",
+            "4f5ef625fca47af180feed99fabecb89"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-5",
+          "category": "direct",
+          "query": "初始码-005的登记编号是什么",
+          "expected_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "8f2236c4b3861d6409a1d1d6eed1cafd"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-5",
+          "category": "two_hop",
+          "query": "初始码-005的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "8f2236c4b3861d6409a1d1d6eed1cafd"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-6",
+          "category": "direct",
+          "query": "初始码-006的登记编号是什么",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd"
+          ],
+          "returned_ids": [
+            "4efd9db32042198ed77eecff8202c4ec",
+            "3319644ab41e29ec62fb75721f936fbd"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 0.5,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-6",
+          "category": "two_hop",
+          "query": "初始码-006的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec"
+          ],
+          "returned_ids": [
+            "4efd9db32042198ed77eecff8202c4ec",
+            "3319644ab41e29ec62fb75721f936fbd"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-7",
+          "category": "direct",
+          "query": "初始码-007的登记编号是什么",
+          "expected_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "118e80163137b2a7b53869fa3b0c23ec"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-7",
+          "category": "two_hop",
+          "query": "初始码-007的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "118e80163137b2a7b53869fa3b0c23ec"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-8",
+          "category": "direct",
+          "query": "初始码-008的登记编号是什么",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-8",
+          "category": "two_hop",
+          "query": "初始码-008的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-0",
+          "category": "absent",
+          "query": "火星气象观测",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-1",
+          "category": "absent",
+          "query": "珊瑚海域洋流",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-2",
+          "category": "absent",
+          "query": "古建筑壁画年代",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-3",
+          "category": "absent",
+          "query": "遥感卫星轨道",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "reviewed_relations",
+          "routing": null,
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "mode": "hybrid",
+      "available": true,
+      "independent_queries": 20,
+      "timed_calls": 100,
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.30000000000000004,
+      "hit_at_k": 1,
+      "mrr": 1.0,
+      "absent_empty_rate": 1,
+      "latency_ms": {
+        "p50": 7.450700009940192,
+        "p95": 15.41609998093918,
+        "mean": 8.353566998848692
+      },
+      "categories": {
+        "direct": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 1.0
+        },
+        "two_hop": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 1.0
+        }
+      },
+      "results": [
+        {
+          "id": "lookup-1",
+          "category": "direct",
+          "query": "初始码-001的登记编号是什么",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-1",
+          "category": "two_hop",
+          "query": "初始码-001的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9",
+            "0933879c81f666e60febb8eb846e32b4",
+            "cd47d0adf73b7ee19372d9007664ac61",
+            "be954abfd55b04586dbcf00f8cc96c68"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-2",
+          "category": "direct",
+          "query": "初始码-002的登记编号是什么",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad"
+          ],
+          "returned_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+cooccurrence+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-2",
+          "category": "two_hop",
+          "query": "初始码-002的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94"
+          ],
+          "returned_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94",
+            "dae0d36e693ed12c0e5216fecf62e46d",
+            "02340c20f7f69c8f2c86c901cc27c12a",
+            "19d04f574931356ec4f0e384c5e1a90a"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+cooccurrence+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-3",
+          "category": "direct",
+          "query": "初始码-003的登记编号是什么",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-3",
+          "category": "two_hop",
+          "query": "初始码-003的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677",
+            "ba07d9396edf866778b72fc55ce3c2f8",
+            "9101508763f9a2a562da941d55a58937",
+            "ebcc420e2a25f939dd70fe31e789b043"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-4",
+          "category": "direct",
+          "query": "初始码-004的登记编号是什么",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89"
+          ],
+          "returned_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-4",
+          "category": "two_hop",
+          "query": "初始码-004的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86"
+          ],
+          "returned_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86",
+            "59f3d6b50273e7bef49e65c53653618f",
+            "8b3f548922d9fc0aba84123e5e76d711",
+            "5b7e441c4e7925f1c622899058ff54dd"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-5",
+          "category": "direct",
+          "query": "初始码-005的登记编号是什么",
+          "expected_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "828099d7faf9834f97592dacd897341a",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-5",
+          "category": "two_hop",
+          "query": "初始码-005的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "f40e2e71069fde7279bf4d081dee49c8",
+            "2fde8d273a67a7bbf448827ba2ea1de6",
+            "692e95654282ac87cde0a2b0136f9f67"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-6",
+          "category": "direct",
+          "query": "初始码-006的登记编号是什么",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd"
+          ],
+          "returned_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-6",
+          "category": "two_hop",
+          "query": "初始码-006的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec"
+          ],
+          "returned_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec",
+            "d616e60931a2acfc23b0f9f9e98c4197",
+            "00b52454b6193bbc67ad8a8f81c1a139",
+            "91e0b4db19f2e062858fc2b57ffad0b0"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-7",
+          "category": "direct",
+          "query": "初始码-007的登记编号是什么",
+          "expected_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-7",
+          "category": "two_hop",
+          "query": "初始码-007的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "640635c5359ba4dbb39fd7a2734ee4ba",
+            "de51bfc9074f88519123836b7437463f",
+            "7aa4ed13d9235cb82445ef84bdfa67ab"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "lookup-8",
+          "category": "direct",
+          "query": "初始码-008的登记编号是什么",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "path-8",
+          "category": "two_hop",
+          "query": "初始码-008的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df",
+            "41b8d467661d00866e5319b614b3fb70",
+            "380df7f8cec64624822740f1dedc049b",
+            "49375f5a63981b4ee690e15c5e65f2a4"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-0",
+          "category": "absent",
+          "query": "火星气象观测",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-1",
+          "category": "absent",
+          "query": "珊瑚海域洋流",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-2",
+          "category": "absent",
+          "query": "古建筑壁画年代",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        },
+        {
+          "id": "absent-3",
+          "category": "absent",
+          "query": "遥感卫星轨道",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": null,
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "mode": "auto",
+      "available": true,
+      "independent_queries": 20,
+      "timed_calls": 100,
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.30000000000000004,
+      "hit_at_k": 1,
+      "mrr": 1.0,
+      "absent_empty_rate": 1,
+      "latency_ms": {
+        "p50": 7.878550008172169,
+        "p95": 14.990499999839813,
+        "mean": 7.211635002167895
+      },
+      "categories": {
+        "direct": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 1.0
+        },
+        "two_hop": {
+          "queries": 8,
+          "recall_at_k": 1.0,
+          "mrr": 1.0
+        }
+      },
+      "results": [
+        {
+          "id": "lookup-1",
+          "category": "direct",
+          "query": "初始码-001的登记编号是什么",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 2.886,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-1",
+          "category": "two_hop",
+          "query": "初始码-001的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9"
+          ],
+          "returned_ids": [
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "e2cba710ba03f0cb137e77b18c96e8b9",
+            "0933879c81f666e60febb8eb846e32b4",
+            "cd47d0adf73b7ee19372d9007664ac61",
+            "be954abfd55b04586dbcf00f8cc96c68"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-2",
+          "category": "direct",
+          "query": "初始码-002的登记编号是什么",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad"
+          ],
+          "returned_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 3.004,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-2",
+          "category": "two_hop",
+          "query": "初始码-002的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94"
+          ],
+          "returned_ids": [
+            "9f3588f480cf5c3080a5c039093e43ad",
+            "e5c5bc7a564268549ccb1fba553d2c94",
+            "dae0d36e693ed12c0e5216fecf62e46d",
+            "02340c20f7f69c8f2c86c901cc27c12a",
+            "19d04f574931356ec4f0e384c5e1a90a"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+cooccurrence+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-3",
+          "category": "direct",
+          "query": "初始码-003的登记编号是什么",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 2.947,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-3",
+          "category": "two_hop",
+          "query": "初始码-003的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677"
+          ],
+          "returned_ids": [
+            "84def032a96313dd7e5454788a92ce7f",
+            "a442399b276d7c076020c707a652d677",
+            "ba07d9396edf866778b72fc55ce3c2f8",
+            "9101508763f9a2a562da941d55a58937",
+            "ebcc420e2a25f939dd70fe31e789b043"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-4",
+          "category": "direct",
+          "query": "初始码-004的登记编号是什么",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89"
+          ],
+          "returned_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 3.013,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-4",
+          "category": "two_hop",
+          "query": "初始码-004的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86"
+          ],
+          "returned_ids": [
+            "4f5ef625fca47af180feed99fabecb89",
+            "ea1ed806c74d087813343abea6af8a86",
+            "59f3d6b50273e7bef49e65c53653618f",
+            "8b3f548922d9fc0aba84123e5e76d711",
+            "5b7e441c4e7925f1c622899058ff54dd"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-5",
+          "category": "direct",
+          "query": "初始码-005的登记编号是什么",
+          "expected_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "828099d7faf9834f97592dacd897341a",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 2.438,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-5",
+          "category": "two_hop",
+          "query": "初始码-005的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "e5bcd29b578f2461ba77e3a1d8366da2"
+          ],
+          "returned_ids": [
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "8f2236c4b3861d6409a1d1d6eed1cafd",
+            "f40e2e71069fde7279bf4d081dee49c8",
+            "2fde8d273a67a7bbf448827ba2ea1de6",
+            "692e95654282ac87cde0a2b0136f9f67"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-6",
+          "category": "direct",
+          "query": "初始码-006的登记编号是什么",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd"
+          ],
+          "returned_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 2.723,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-6",
+          "category": "two_hop",
+          "query": "初始码-006的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec"
+          ],
+          "returned_ids": [
+            "3319644ab41e29ec62fb75721f936fbd",
+            "4efd9db32042198ed77eecff8202c4ec",
+            "d616e60931a2acfc23b0f9f9e98c4197",
+            "00b52454b6193bbc67ad8a8f81c1a139",
+            "91e0b4db19f2e062858fc2b57ffad0b0"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-7",
+          "category": "direct",
+          "query": "初始码-007的登记编号是什么",
+          "expected_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 3.186,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-7",
+          "category": "two_hop",
+          "query": "初始码-007的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "59d7eb4f722ccc0d49480cf31d50a9d8"
+          ],
+          "returned_ids": [
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "118e80163137b2a7b53869fa3b0c23ec",
+            "640635c5359ba4dbb39fd7a2734ee4ba",
+            "de51bfc9074f88519123836b7437463f",
+            "7aa4ed13d9235cb82445ef84bdfa67ab"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "lookup-8",
+          "category": "direct",
+          "query": "初始码-008的登记编号是什么",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "e5bcd29b578f2461ba77e3a1d8366da2",
+            "59d7eb4f722ccc0d49480cf31d50a9d8",
+            "700d4f8bb2acdd2ddf0cb3d785757d82",
+            "84def032a96313dd7e5454788a92ce7f"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.2,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "direct_lookup",
+            "reason": "先使用快速文本检索；当前问题未触发关系深检索规则",
+            "deep_attempted": false,
+            "graph_used": false,
+            "fallback": "",
+            "fast_ms": 2.573,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "path-8",
+          "category": "two_hop",
+          "query": "初始码-008的关联路径最终连接哪个终点",
+          "expected_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df"
+          ],
+          "returned_ids": [
+            "828099d7faf9834f97592dacd897341a",
+            "8bc6ed13af34b8f8c3734c51423f06df",
+            "41b8d467661d00866e5319b614b3fb70",
+            "380df7f8cec64624822740f1dedc049b",
+            "49375f5a63981b4ee690e15c5e65f2a4"
+          ],
+          "recall": 1.0,
+          "precision_at_k": 0.4,
+          "reciprocal_rank": 1.0,
+          "hit": true,
+          "empty": false,
+          "effective_mode": "keyword+reviewed_relations",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "deep",
+            "reason_code": "relational_intent",
+            "reason": "问题涉及关系、比较或跨片段线索，尝试补充已审核关系路径",
+            "deep_attempted": true,
+            "graph_used": true,
+            "fallback": "",
+            "fast_ms": null,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "absent-0",
+          "category": "absent",
+          "query": "火星气象观测",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "no_fast_evidence",
+            "reason": "快速检索没有命中，尝试寻找已审核的原文关系",
+            "deep_attempted": true,
+            "graph_used": false,
+            "fallback": "未命中当前范围内的有效审核路径，保留快速检索结果",
+            "fast_ms": 2.47,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "absent-1",
+          "category": "absent",
+          "query": "珊瑚海域洋流",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "no_fast_evidence",
+            "reason": "快速检索没有命中，尝试寻找已审核的原文关系",
+            "deep_attempted": true,
+            "graph_used": false,
+            "fallback": "未命中当前范围内的有效审核路径，保留快速检索结果",
+            "fast_ms": 3.565,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "absent-2",
+          "category": "absent",
+          "query": "古建筑壁画年代",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "no_fast_evidence",
+            "reason": "快速检索没有命中，尝试寻找已审核的原文关系",
+            "deep_attempted": true,
+            "graph_used": false,
+            "fallback": "未命中当前范围内的有效审核路径，保留快速检索结果",
+            "fast_ms": 2.224,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        },
+        {
+          "id": "absent-3",
+          "category": "absent",
+          "query": "遥感卫星轨道",
+          "expected_ids": [],
+          "returned_ids": [],
+          "recall": null,
+          "precision_at_k": null,
+          "reciprocal_rank": 0,
+          "hit": false,
+          "empty": true,
+          "effective_mode": "keyword",
+          "routing": {
+            "policy": "rules-v1",
+            "selected": "fast",
+            "reason_code": "no_fast_evidence",
+            "reason": "快速检索没有命中，尝试寻找已审核的原文关系",
+            "deep_attempted": true,
+            "graph_used": false,
+            "fallback": "未命中当前范围内的有效审核路径，保留快速检索结果",
+            "fast_ms": 2.443,
+            "max_hops": 2,
+            "max_paths": 30
+          },
+          "warnings": []
+        }
+      ]
+    }
+  ]
+}

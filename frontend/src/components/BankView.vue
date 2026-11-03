@@ -166,6 +166,35 @@ onActivated(load);
         {{ citation.quote }}
       </blockquote>
     </details>
+    <blockquote v-if="item.metadata.case_narrative">
+      共享病例：{{ item.metadata.case_narrative }}
+    </blockquote>
+    <p class="help">
+      考点：{{ item.metadata.knowledge_point || "未标注" }} · 模板
+      {{ item.metadata.template || "历史版本"
+      }}<template v-if="item.metadata.review_uses_same_model">
+        · 同一模型复核</template
+      >
+    </p>
+    <details class="analysis">
+      <summary>逐项自动审查意见</summary>
+      <p v-if="!item.automatic_review.options" class="help">
+        历史题或编辑后题目没有当前自动审查记录，请人工核对。
+      </p>
+      <div
+        v-for="(review, key) in item.automatic_review.options || {}"
+        :key="key"
+      >
+        <h3>
+          {{ key }} · {{ review.correct ? "判断为正确选项" : "判断为干扰项" }}
+        </h3>
+        <p>{{ review.reason }}</p>
+        <blockquote v-for="c in review.citations" :key="c.evidence_id">
+          {{ c.quote }}
+        </blockquote>
+      </div>
+      <p>{{ item.automatic_review.reason }}</p>
+    </details>
     <p v-if="!item.sources_valid" class="notice error">
       原文已删除或引用失效，此题不能审核通过或导出。
     </p>
@@ -205,6 +234,7 @@ onActivated(load);
             edited: "编辑重审",
             approved: "审核通过",
             rejected: "驳回",
+            source_changed: "来源变化待复核",
           }[event.action]
         }}
         · {{ event.detail }}

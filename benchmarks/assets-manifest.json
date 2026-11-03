@@ -1,0 +1,53 @@
+{
+  "nfcorpus.zip": {
+    "url": "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/nfcorpus.zip",
+    "sha256": "efe5be03f8c5b86a5870102d0599d227c8c6e2484328e68c6522560385671b0b",
+    "bytes": 2448432
+  },
+  "ori_pqal.json": {
+    "url": "https://raw.githubusercontent.com/pubmedqa/pubmedqa/master/data/ori_pqal.json",
+    "sha256": "8b3276be8942ebbd77f3ddcda12c1749bf0e490045a736fd8438ee40cf37a41d",
+    "bytes": 2584787
+  },
+  "BAAI/bge-small-en-v1.5": {
+    "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+    "weights": "model.safetensors",
+    "sha256": "3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad",
+    "bytes": 133466304
+  },
+  "BAAI/bge-large-zh-v1.5": {
+    "revision": "79e7739b6ab944e86d6171e44d24c997fc1e0116",
+    "weights": "pytorch_model.bin",
+    "sha256": "bf84a56fb045c24e090495195584a3922c3e4204107f0bba8b79c11f67a207f2",
+    "bytes": 1302220525
+  },
+  "cross-encoder/ms-marco-MiniLM-L6-v2": {
+    "revision": "233902d25c440f23af6f7d6e94d2946bac0bee0a",
+    "weights": "model.safetensors",
+    "sha256": "821d1aa69520101d6e0737f78a042ae25b19e5cb9160701909d10434f4aeb0ae",
+    "bytes": 90870598
+  },
+  "BAAI/bge-reranker-base": {
+    "revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+    "weights": "model.safetensors",
+    "sha256": "ced967c45fd1902eb92716c9ceeca7c95a936770ea9db611f5a841b926e33fbd",
+    "bytes": 1112206140
+  },
+  "mteb/MedicalRetrieval": {
+    "revision": "bc05e883de33f26fb745fe57092796ceb65a48bb",
+    "files": {
+      "corpus/dev-00000-of-00001.parquet": {
+        "sha256": "ac480b58f2b3668585b5a544440af29d46a5070740b9f8088d3db81c6fbcb900",
+        "bytes": 25049177
+      },
+      "data/dev-00000-of-00001.parquet": {
+        "sha256": "cf879a5802402a31f541b21d6f70cb878575e901fc1594b645c8ef7bbf66e2db",
+        "bytes": 12277
+      },
+      "queries/dev-00000-of-00001.parquet": {
+        "sha256": "772c356849c5a7ff8a4348bdc9dc9a07e4e0a80899c33f66a143c20c21259c7f",
+        "bytes": 48477
+      }
+    }
+  }
+}

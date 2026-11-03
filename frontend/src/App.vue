@@ -1,51 +1,39 @@
-<script setup>
-import { computed, defineAsyncComponent, onMounted, ref } from "vue";
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
+import { navigation, primaryNavigation, moreNavigation } from "./router";
+import { useWorkspace } from "./stores/workspace";
 import { api } from "./api";
-const views = {
-  ask: defineAsyncComponent(() => import("./components/AskView.vue")),
-  documents: defineAsyncComponent(
-    () => import("./components/DocumentsView.vue"),
-  ),
-  generate: defineAsyncComponent(() => import("./components/GenerateView.vue")),
-  bank: defineAsyncComponent(() => import("./components/BankView.vue")),
-  graph: defineAsyncComponent(() => import("./components/GraphView.vue")),
-  settings: defineAsyncComponent(() => import("./components/SettingsView.vue")),
-};
-const navigation = [
-  { id: "ask", label: "依据问答", icon: "✧" },
-  { id: "documents", label: "医学资料库", icon: "▤" },
-  { id: "generate", label: "智能出题", icon: "＋" },
-  { id: "bank", label: "题库与审核", icon: "✓" },
-  { id: "graph", label: "知识图谱", icon: "⌘" },
-  { id: "settings", label: "模型与设置", icon: "⚙" },
-];
-const view = ref("ask"),
-  status = ref(null),
-  documents = ref([]),
-  questions = ref([]),
-  error = ref("");
-const active = computed(() =>
-  navigation.find((item) => item.id === view.value),
+const route = useRoute(),
+  router = useRouter(),
+  workspace = useWorkspace();
+const { status, summary, error } = storeToRefs(workspace);
+const view = computed(() => String(route.name || "ask"));
+const active = computed(
+  () => navigation.find((item) => item.id === view.value) || navigation[0],
 );
-const pending = computed(
-  () => questions.value.filter((q) => q.status === "pending_review").length,
+const pending = computed(() => summary.value.pending);
+const profile = ref(null as { name: string } | null);
+const moreOpen = ref(false);
+watch(
+  () => route.name,
+  (name) => {
+    if (name !== "reader" && moreNavigation.some((item) => item.id === name))
+      moreOpen.value = true;
+  },
+  { immediate: true },
 );
-async function refresh() {
+const refresh = () => workspace.refresh();
+function navigate(id: string) {
+  if (router.hasRoute(id)) router.push({ name: id });
+}
+onMounted(async () => {
   try {
-    [status.value, documents.value, questions.value] = await Promise.all([
-      api("/status"),
-      api("/documents"),
-      api("/questions"),
-    ]);
-    error.value = "";
-  } catch (e) {
-    error.value = "无法连接后端服务，请先启动应用。";
-  }
-}
-function navigate(id) {
-  if (views[id]) view.value = id;
-}
-onMounted(refresh);
+    profile.value = await api("/profile");
+  } catch {}
+  await refresh();
+});
 </script>
 
 <template>
@@ -71,9 +59,12 @@ onMounted(refresh);
         ><span>MediGraph<em>RAG</em><small>医学知识与出题平台</small></span></a
       >
       <p class="nav-caption">工作空间</p>
+      <small class="profile-label"
+        >{{ profile?.name || "个人资料库" }} · 自动保存</small
+      >
       <nav aria-label="主导航">
         <button
-          v-for="item in navigation"
+          v-for="item in primaryNavigation"
           :key="item.id"
           :class="{ active: view === item.id }"
           :aria-current="view === item.id ? 'page' : undefined"
@@ -89,6 +80,31 @@ onMounted(refresh);
           >
         </button>
       </nav>
+      <details
+        class="tool-menu"
+        :open="moreOpen"
+        @toggle="moreOpen = ($event.target as HTMLDetailsElement).open"
+      >
+        <summary>更多工具</summary>
+        <nav aria-label="教学与管理工具">
+          <button
+            v-for="item in moreNavigation"
+            :key="item.id"
+            :class="{ active: view === item.id }"
+            :aria-current="view === item.id ? 'page' : undefined"
+            @click="navigate(item.id)"
+          >
+            <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span
+            >{{ item.label
+            }}<span
+              v-if="item.id === 'bank' && pending"
+              class="nav-count"
+              aria-hidden="true"
+              >{{ pending }}</span
+            >
+          </button>
+        </nav>
+      </details>
       <div class="sidebar-bottom">
         <span class="status-dot" :class="{ offline: !status }"></span
         >{{ status ? "服务已连接" : "等待服务连接"
@@ -112,19 +128,21 @@ onMounted(refresh);
         </div>
         <div class="workspace-stats">
           <span
-            ><strong>{{ documents.length }}</strong> 份医学资料</span
+            ><strong>{{ summary.documents }}</strong> 份医学资料</span
           ><span
-            ><strong>{{
-              documents.reduce((n, d) => n + d.chunk_count, 0)
-            }}</strong>
-            个原文片段</span
+            ><strong>{{ summary.chunks }}</strong> 个原文片段</span
           ><span
             ><strong>{{ pending }}</strong> 道题待审核</span
           >
         </div>
-        <KeepAlive
-          ><component :is="views[view]" @navigate="navigate" @changed="refresh"
-        /></KeepAlive>
+        <RouterView v-slot="{ Component }"
+          ><KeepAlive
+            ><component
+              :is="Component"
+              :key="$route.name"
+              @navigate="navigate"
+              @changed="refresh" /></KeepAlive
+        ></RouterView>
       </main>
       <footer>MEDIGRAPH RAG <span>医学学习 · 原文追溯 · 人工审题</span></footer>
     </div>

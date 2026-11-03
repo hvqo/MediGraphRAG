@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
-import { api, send } from "../api";
+import { api } from "../api";
+import { useRouter } from "vue-router";
+const router = useRouter();
 import EvidenceList from "./EvidenceList.vue";
 const items = ref([]),
   title = ref(""),
@@ -13,38 +15,44 @@ const emit = defineEmits(["changed"]);
 async function load() {
   items.value = await api("/documents");
 }
-async function perform(action) {
+async function upload(event) {
+  const list = Array.from(event.target.files || []);
+  if (!list.length) return;
   busy.value = true;
   error.value = "";
-  message.value = "";
   try {
-    const result = await action();
-    message.value = result.duplicate
-      ? "这份资料已在知识库中，无需重复导入。"
-      : "资料已导入，可以开始检索和出题。";
-    await load();
-    emit("changed");
+    const form = new FormData();
+    for (const file of list) form.append("files", file);
+    form.append("instruction", "提炼这些资料的知识点");
+    const task = await api("/workspace/submit", { method: "POST", body: form });
+    router.push({ name: "ask", query: { task: task.id } });
   } catch (e) {
     error.value = e.message;
   } finally {
     busy.value = false;
+    event.target.value = "";
   }
 }
-async function upload(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  const form = new FormData();
-  form.append("file", file);
-  await perform(() => api("/documents/upload", { method: "POST", body: form }));
-  event.target.value = "";
-}
 async function paste() {
-  await perform(() =>
-    send("/documents/text", { title: title.value, text: text.value }),
-  );
-  if (!error.value) {
+  busy.value = true;
+  error.value = "";
+  try {
+    const form = new FormData();
+    form.append(
+      "files",
+      new File([text.value], (title.value.trim() || "粘贴资料") + ".txt", {
+        type: "text/plain",
+      }),
+    );
+    form.append("instruction", "提炼这些资料的知识点");
+    const task = await api("/workspace/submit", { method: "POST", body: form });
     title.value = "";
     text.value = "";
+    router.push({ name: "ask", query: { task: task.id } });
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    busy.value = false;
   }
 }
 async function remove(item) {
@@ -98,15 +106,17 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
       <label class="upload-zone" :class="{ loading: busy }"
         ><span class="upload-icon">↑</span
         ><strong>{{ busy ? "正在解析资料…" : "选择医学资料文件" }}</strong
-        ><span>PDF、DOCX、TXT、Markdown · 最大 25MB</span
+        ><span>图片、PDF、Word、TXT、Markdown · 可批量选择 · 每份最大25MB</span
         ><input
           type="file"
-          accept=".pdf,.docx,.txt,.md,.markdown"
+          multiple
+          accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.txt,.md,.markdown"
           :disabled="busy"
           @change="upload"
       /></label>
       <p class="help">
-        PDF 保留页码，Word 和文本保留段落。扫描文件需先完成文字识别。
+        PDF 保留页码，Word
+        和文本保留段落。图片和扫描PDF会自动尝试视觉识别，后台继续整理资料。
       </p>
     </section>
     <form class="panel stack" @submit.prevent="paste">
@@ -174,7 +184,14 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
             </td>
             <td>
               <div class="inline">
-                <button class="text-button" @click="inspect(item)">
+                <button
+                  class="text-button"
+                  @click="
+                    router.push({ name: 'reader', params: { id: item.id } })
+                  "
+                >
+                  打开阅读器</button
+                ><button class="text-button" @click="inspect(item)">
                   查看原文</button
                 ><button class="text-button danger" @click="remove(item)">
                   删除

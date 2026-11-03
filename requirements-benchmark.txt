@@ -1,0 +1,3 @@
+-r requirements-retrieval.txt
+pyarrow==17.0.0
+matplotlib==3.9.4

@@ -1,0 +1,14 @@
+{
+  "name": "中文软件功能验收集（非医学准确率评测）",
+  "reviewed_for_medical_use": false,
+  "documents": [
+    {"title": "软件索引标签甲", "text": "软件验收声明：糖尿病标签的测试编号为 T-001。本段只定义软件测试标签，不提供诊疗知识。"},
+    {"title": "软件索引标签乙", "text": "软件验收声明：高血压标签的测试编号为 T-002。本段只定义软件测试标签，不提供诊疗知识。"},
+    {"title": "软件索引标签丙", "text": "软件验收声明：肺炎标签的测试编号为 T-003。本段只定义软件测试标签，不提供诊疗知识。"}
+  ],
+  "samples": [
+    {"query": "糖尿病", "expected_document": 0},
+    {"query": "高血压", "expected_document": 1},
+    {"query": "肺炎", "expected_document": 2}
+  ]
+}

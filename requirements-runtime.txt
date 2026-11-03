@@ -7,3 +7,5 @@ python-dotenv==1.0.0
 python-multipart==0.0.20
 pypdf==5.1.0
 neo4j==5.26.0
+Pillow==12.3.0
+pypdfium2==4.30.0

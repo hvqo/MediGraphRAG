@@ -9,7 +9,9 @@
 不能由语言占比判断应用后端的运行方式。原应用后端已经是 Python/FastAPI，前端是 Vue。
 
 GitHub 通过 Linguist 统计语言，而且仓库统计在推送到**默认分支**后更新。
-本次仅修改改造分支，不合并 main、不更改默认分支；所以仓库首页仍可能显示旧统计。
+整理完成后，用户追加授权备份 main 并同步整理版：备份为
+`backup/main-before-refactor-20261027`，main 快进到 `46ae84a`；GitHub 语言接口已不再包含 Notebook。
+后续 V2 开发继续在改造分支。
 参见 [GitHub 官方说明](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-repository-languages)。
 
 ## 已进行的真实迁移
@@ -57,11 +59,11 @@ python -m backend.app.cli build-index
 ## 规范与检查
 
 - Python 包元数据及 CLI：`pyproject.toml`。
-- Python 后端 `.py`；Vue 页面 `.vue`，辅助逻辑 `.js`，样式 `.css`。这些都保留真实语言。
+- Python 后端 `.py`；Vue 页面 `.vue`；新入口、路由、状态与领域类型 `.ts`，样式 `.css`。
 - `.gitattributes` 仅规范换行与资料/模型属性，不把 Notebook JSON 冒充 Python。
 - 移除未使用的 Vite 欢迎页和示例图标，新增格式检查与 GitHub Actions。
 - `python scripts/check_repository.py` 检查零 Notebook、Python 语法和完整源码迁出。
 - 后端测试、前端格式与构建、浏览器检查继续独立运行。
 
 GitHub 的正式语言占比未在本地用 Linguist 重新计算，因此不承诺具体百分比。
-修改默认分支或合并 main 需要用户另行指示，本次不执行。
+本轮 main 同步已按用户明确指示完成；新增功能提交在 `refactor/medigraphrag`。
