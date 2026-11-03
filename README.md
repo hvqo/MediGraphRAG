@@ -8,7 +8,7 @@
 
 Python · FastAPI · Vue 3 · BGE · FAISS · Ollama
 
-[![Checks](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml/badge.svg?branch=refactor%2Fmedigraphrag)](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml) ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+[![Checks](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml) ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 
 [功能特性](#功能特性) · [界面预览](#界面预览) · [系统架构](#系统架构) · [快速开始](#快速开始) · [配置说明](#配置说明) · [效果评测](#效果评测) · [项目结构](#项目结构)
 
@@ -20,8 +20,8 @@ MediGraphRAG 面向医学教育与研究，将教材、指南和学习笔记整�
 用户可以直接提问，也可以上传一批图片、PDF 或 Word，要求提炼知识点、生成练习题。
 系统完成资料识别、检索、生成与引用校验，并将文件和处理结果保存到个人资料库。
 
-> 本页介绍 **0.6.0 改造版**，代码位于 `refactor/medigraphrag`。
-> 原始版本的 README 保留在 [main 分支](https://github.com/hvqo/MediGraphRAG/blob/main/README.md)，原始代码可从[备份分支](https://github.com/hvqo/MediGraphRAG/tree/backup/main-before-refactor-20261027)查看。
+> 本页介绍 **0.6.0 改造版**，完整版本已发布到 `main`；`refactor/medigraphrag` 保留开发历史。
+> 原始版本的 [README](https://github.com/hvqo/MediGraphRAG/blob/backup/main-before-refactor-20261027/README.md) 与[代码](https://github.com/hvqo/MediGraphRAG/tree/backup/main-before-refactor-20261027)保留在备份分支。
 
 ## 功能特性
 
@@ -143,10 +143,10 @@ Notebook 整理记录见[源码布局](docs/SOURCE_LAYOUT.md)；当前评测尚�
 | 图片与扫描页 | CPU OCR；图示识别使用本地 Ollama 视觉模型 |
 | 语义检索 | 可选 PyTorch、完整 BGE 权重与 FAISS |
 
-获取改造分支，并激活现有虚拟环境。首次使用可创建环境：
+获取项目，并激活现有虚拟环境。首次使用可创建环境：
 
 ```bash
-git clone --branch refactor/medigraphrag https://github.com/hvqo/MediGraphRAG.git
+git clone https://github.com/hvqo/MediGraphRAG.git
 cd MediGraphRAG
 python -m venv .venv
 ```
