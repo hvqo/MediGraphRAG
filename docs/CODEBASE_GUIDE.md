@@ -2,7 +2,7 @@
 
 核对日期：2026-11-08。基线：main / 866162a / 0.6.0。
 
-2026-11-17更新：目录与主业务链路继续适用；当前改造分支为0.7，模型和启动方法以 [MODEL_UPGRADE.md](MODEL_UPGRADE.md) 为准，支持llama.cpp / LM Studio本地兼容接口及Qwen3-VL-8B。以下原始启动实录保留为0.6历史记录；文件/目录/符号CSV已随本轮源码更新。
+2026-11-17更新：目录与主业务链路继续适用；0.7已合入main，模型和启动方法以 [MODEL_UPGRADE.md](MODEL_UPGRADE.md) 为准，支持llama.cpp / LM Studio本地兼容接口及Qwen3-VL-8B。以下原始启动实录保留为0.6历史记录；文件/目录/符号CSV已随本轮源码更新。
 
 本说明依据当前代码核对，不把历史设计文档中的计划当成已实现功能。
 逐个受 Git 管理的文件见 [FILE_INVENTORY.csv](FILE_INVENTORY.csv)；逐个目录及文件数见 [DIRECTORY_INVENTORY.csv](DIRECTORY_INVENTORY.csv)。

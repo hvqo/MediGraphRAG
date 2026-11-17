@@ -8,7 +8,7 @@
 
 Python · FastAPI · Vue 3 · BGE-M3 · FAISS · llama.cpp
 
-[![Checks](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml/badge.svg?branch=refactor%2Fmedigraphrag)](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml) ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+[![Checks](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml) ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 
 [功能特性](#功能特性) · [界面预览](#界面预览) · [系统架构](#系统架构) · [快速开始](#快速开始) · [配置说明](#配置说明) · [效果评测](#效果评测) · [项目结构](#项目结构)
 
@@ -20,8 +20,8 @@ MediGraphRAG 面向医学教育与研究，将教材、指南和学习笔记整�
 用户可以直接提问，也可以上传一批图片、PDF 或 Word，要求提炼知识点、生成练习题。
 系统完成资料识别、检索、生成与引用校验，并将文件和处理结果保存到个人资料库。
 
-> 本页介绍 **0.7.0 改造分支**：Qwen3-VL-8B、本地兼容推理服务与检索适配升级。
-> `main` 保持0.6.0；本轮代码发布在 `refactor/medigraphrag`。详细部署见[模型与运行时升级说明](docs/MODEL_UPGRADE.md)。
+> 本页介绍已发布到 **main 的0.7.0版本**：Qwen3-VL-8B、本地兼容推理服务与检索适配升级。
+> `refactor/medigraphrag` 保留开发历史；升级前的main保存在 `backup/main-before-v07-20261117`。详细部署见[模型与运行时升级说明](docs/MODEL_UPGRADE.md)。
 > 原始版本的 [README](https://github.com/hvqo/MediGraphRAG/blob/backup/main-before-refactor-20261027/README.md) 与[代码](https://github.com/hvqo/MediGraphRAG/tree/backup/main-before-refactor-20261027)保留在备份分支。
 
 ## 功能特性
@@ -147,7 +147,7 @@ Notebook 整理记录见[源码布局](docs/SOURCE_LAYOUT.md)；当前评测尚�
 获取项目，并激活现有虚拟环境。首次使用可创建环境：
 
 ```bash
-git clone --branch refactor/medigraphrag https://github.com/hvqo/MediGraphRAG.git
+git clone https://github.com/hvqo/MediGraphRAG.git
 cd MediGraphRAG
 python -m venv .venv
 ```

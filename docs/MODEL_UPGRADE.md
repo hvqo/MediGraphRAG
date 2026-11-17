@@ -1,6 +1,6 @@
 # 0.7 模型与本地运行时升级
 
-本轮在 `refactor/medigraphrag` 落地；main仍为0.6。正式医学对照评测按用户要求后置，下面区分已实现能力与未启用方案。
+0.7已从 `refactor/medigraphrag` 合入main；升级前的main保存在 `backup/main-before-v07-20261117`。正式医学对照评测按用户要求后置，下面区分已实现能力与未启用方案。
 
 ## 已实现的主路线
 
