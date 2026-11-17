@@ -112,7 +112,11 @@ def embed(texts, device, model_path=None):
     batches = []
     for start in range(0, len(texts), 16):
         inputs = tokenizer(
-            texts[start : start + 16], padding=True, truncation=True, max_length=512, return_tensors="pt"
+            texts[start : start + 16],
+            padding=True,
+            truncation=True,
+            max_length=2048 if "bge-m3" in path.name.lower() else 512,
+            return_tensors="pt",
         ).to(model.device)
         with torch.inference_mode():
             vectors = model(**inputs).last_hidden_state[:, 0]
@@ -132,6 +136,12 @@ class Retriever:
     def embedding_path(self):
         if os.getenv("MEDIGRAPH_EMBEDDING_PATH"):
             return model_paths()[0]
+        modern = ROOT / ".runtime/models/bge-m3"
+        choice = self.settings.get().embedding_model
+        if choice == "bge-m3" or (
+            choice == "auto" and any((modern / n).exists() for n in ("model.safetensors", "pytorch_model.bin"))
+        ):
+            return modern
         english = ROOT / ".runtime/models/bge-small-en-v1.5"
         sample = "".join(r["text"][:200] for r in self.db.rows("SELECT text FROM chunks LIMIT 64"))
         if (
@@ -153,6 +163,8 @@ class Retriever:
     def query_text(self, query):
         name = self.embedding_path().name.lower()
         if "bge" not in name:
+            return query
+        if "bge-m3" in name:
             return query
         return (
             "为这个句子生成表示以用于检索相关文章："
@@ -434,7 +446,7 @@ class Retriever:
                 except (ImportError, OSError, RuntimeError, ValueError):
                     warnings.append("向量检索不可用" + ("；本次使用关键词检索" if mode in ("hybrid", "fast") else ""))
         selected = sorted(ranks, key=lambda number: ranks[number], reverse=True)[:20]
-        if config.use_reranker and selected and mode == "hybrid":
+        if config.use_reranker and selected and mode in ("hybrid", "fast", "vector", "keyword"):
             try:
                 import torch
 
@@ -452,7 +464,7 @@ class Retriever:
                         [[query, chunks[number]["text"]] for number in selected],
                         padding=True,
                         truncation=True,
-                        max_length=512,
+                        max_length=1024 if "v2-m3" in path.name else 512,
                         return_tensors="pt",
                     ).to(model.device)
                     with torch.inference_mode():
@@ -462,7 +474,7 @@ class Retriever:
                 ]
                 modes.append("reranker")
             except (ImportError, OSError, RuntimeError, ValueError):
-                warnings.append("重排模型不可用；保留融合检索顺序")
+                warnings.append("重排模型不可用；保留原召回顺序")
         return {
             "items": [{**chunks[number], "score": round(ranks[number], 6)} for number in selected[:top_k]],
             "mode": "+".join(modes) or "unavailable",

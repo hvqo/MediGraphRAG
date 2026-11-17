@@ -33,6 +33,19 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         import uvicorn
+        import os
+
+        runtime = Path(__file__).resolve().parents[2] / ".runtime/local-inference.json"
+        if runtime.exists():
+            local = json.loads(runtime.read_text(encoding="utf-8-sig"))
+            os.environ.setdefault("MEDIGRAPH_DEFAULT_PROVIDER", "openai")
+            os.environ.setdefault("MEDIGRAPH_DEFAULT_API_BASE", local["base_url"])
+            os.environ.setdefault("MEDIGRAPH_DEFAULT_API_MODEL", local["model"])
+            models = runtime.parent / "models"
+            if (models / "bge-m3/pytorch_model.bin").exists():
+                os.environ.setdefault("MEDIGRAPH_DEFAULT_VECTORS", "1")
+            if (models / "bge-reranker-v2-m3/model.safetensors").exists():
+                os.environ.setdefault("MEDIGRAPH_DEFAULT_RERANK", "1")
 
         uvicorn.run("backend.app.main:app", host=args.host, port=args.port, reload=args.reload)
         return 0

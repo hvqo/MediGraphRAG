@@ -3,8 +3,16 @@ import asyncio
 import httpx
 import time
 import uuid
+import weakref
 from contextlib import nullcontext
 from .storage import now
+
+_local_gates = weakref.WeakKeyDictionary()
+
+
+def local_gate(address):
+    gates = _local_gates.setdefault(asyncio.get_running_loop(), {})
+    return gates.setdefault(address, asyncio.Lock())
 
 
 class ModelError(RuntimeError):
@@ -18,7 +26,7 @@ class ModelClient:
         self.usage = (None, None)
 
     def _headers(self):
-        return {"Authorization": "Bearer " + self.store.key()}
+        return {"Authorization": "Bearer " + self.store.key()} if self.store.key() else {}
 
     def snapshot(self, role=None, template=None):
         from types import SimpleNamespace
@@ -27,10 +35,27 @@ class ModelClient:
             settings, key = self.store.get().model_copy(deep=True), self.store.key()
         if role == "review" and settings.review_provider != "same":
             settings.provider = settings.review_provider
+            if settings.review_base_url:
+                setattr(
+                    settings,
+                    "ollama_base_url" if settings.provider == "ollama" else "cloud_base_url",
+                    settings.review_base_url,
+                )
+            key = getattr(self.store, "role_key", lambda role: "")("review") or key
             if settings.review_model:
                 setattr(
                     settings, "ollama_model" if settings.provider == "ollama" else "cloud_model", settings.review_model
                 )
+        if role == "vision":
+            settings.provider = settings.vision_provider
+            settings.request_timeout = settings.vision_timeout
+            setattr(
+                settings,
+                "ollama_base_url" if settings.provider == "ollama" else "cloud_base_url",
+                settings.vision_base_url,
+            )
+            setattr(settings, "ollama_model" if settings.provider == "ollama" else "cloud_model", settings.vision_model)
+            key = getattr(self.store, "role_key", lambda role: key)("vision")
         return ModelClient(
             SimpleNamespace(get=lambda: settings, key=lambda: key),
             self.db,
@@ -44,6 +69,15 @@ class ModelClient:
         try:
             async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
                 if settings.provider == "ollama":
+                    if self.role == "vision" and settings.ollama_model.startswith("qwen3-vl"):
+                        version_response = await client.get(settings.ollama_base_url + "/api/version")
+                        version_response.raise_for_status()
+                        version = tuple(int(p) for p in version_response.json()["version"].split("-")[0].split(".")[:3])
+                        if version < (0, 12, 7):
+                            return {
+                                "ok": False,
+                                "message": "Qwen3-VL需要Ollama 0.12.7或更新版本，请运行scripts/prepare_ollama.ps1并启动项目模型服务",
+                            }
                     response = await client.get(settings.ollama_base_url + "/api/tags")
                     response.raise_for_status()
                     names = [item["name"] for item in response.json().get("models", [])]
@@ -53,8 +87,12 @@ class ModelClient:
                         "message": "模型可用" if matched else "服务已连接，但指定模型尚未下载",
                         "models": names,
                     }
-                if not settings.cloud_base_url or not settings.cloud_model or not self.store.key():
-                    return {"ok": False, "message": "请填写云端地址、模型名称和 API 密钥"}
+                if (
+                    not settings.cloud_base_url
+                    or not settings.cloud_model
+                    or (settings.provider == "cloud" and not self.store.key())
+                ):
+                    return {"ok": False, "message": "请填写兼容接口地址和模型名称；云端服务还需要 API 密钥"}
                 response = await client.get(settings.cloud_base_url + "/models", headers=self._headers())
                 response.raise_for_status()
                 return {
@@ -114,12 +152,11 @@ class ModelClient:
                         ),
                     )
 
-    async def vision_json(self, system, prompt, images, model_name="qwen2.5vl:7b"):
-        client = self.snapshot("vision", "document-vision-v1")
+    async def vision_json(self, system, prompt, images, model_name=None):
+        client = self.snapshot("vision", "document-vision-v2")
         settings = client.store.get()
-        settings.ollama_model = model_name
-        # Visual document processing uses the local service even when text generation is cloud-based.
-        settings.provider = "ollama"
+        if model_name:
+            setattr(settings, "ollama_model" if settings.provider == "ollama" else "cloud_model", model_name)
         return await client.json(system, prompt, images)
 
     async def _json(self, system, prompt, images=None):
@@ -130,39 +167,67 @@ class ModelClient:
         try:
             async with httpx.AsyncClient(timeout=settings.request_timeout, trust_env=False) as client:
                 if settings.provider == "ollama":
-                    response = await client.post(
-                        settings.ollama_base_url + "/api/chat",
-                        json={
-                            "model": settings.ollama_model,
-                            "messages": messages,
-                            "stream": False,
-                            "format": "json",
-                            "options": {
-                                "temperature": 0.15,
-                                "num_ctx": 4096 if images else 8192,
-                                **({"num_predict": 1500} if images else {}),
+                    async with local_gate(settings.ollama_base_url):
+                        response = await client.post(
+                            settings.ollama_base_url + "/api/chat",
+                            json={
+                                "model": settings.ollama_model,
+                                "messages": messages,
+                                "stream": False,
+                                "format": "json",
+                                "options": {
+                                    "temperature": 0.15,
+                                    "num_ctx": settings.vision_context_tokens if images else 8192,
+                                    **({"num_predict": settings.vision_max_tokens} if images else {}),
+                                },
+                                # Release the large VLM before the following text-generation stage.
+                                "keep_alive": 0 if images else "2m",
                             },
-                        },
-                    )
+                        )
                     response.raise_for_status()
                     payload = response.json()
+                    if payload.get("done_reason") == "length":
+                        raise ModelError("模型输出达到长度上限，原页没有完整识别；请提高输出上限或拆分页/区域")
                     content = payload["message"]["content"]
                     self.usage = (payload.get("prompt_eval_count"), payload.get("eval_count"))
                 else:
-                    if not settings.cloud_base_url or not settings.cloud_model or not self.store.key():
-                        raise ModelError("云端模型尚未配置完整")
-                    response = await client.post(
-                        settings.cloud_base_url + "/chat/completions",
-                        headers=self._headers(),
-                        json={
-                            "model": settings.cloud_model,
-                            "messages": messages,
-                            "temperature": 0.15,
-                            "response_format": {"type": "json_object"},
-                        },
-                    )
+                    if (
+                        not settings.cloud_base_url
+                        or not settings.cloud_model
+                        or (settings.provider == "cloud" and not self.store.key())
+                    ):
+                        raise ModelError("兼容接口尚未配置完整；云端服务还需要API密钥")
+                    cloud_messages = messages
+                    if images:
+                        cloud_messages = [
+                            messages[0],
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    *[
+                                        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + image}}
+                                        for image in images
+                                    ],
+                                ],
+                            },
+                        ]
+                    async with local_gate(settings.cloud_base_url):
+                        response = await client.post(
+                            settings.cloud_base_url + "/chat/completions",
+                            headers=self._headers(),
+                            json={
+                                "model": settings.cloud_model,
+                                "messages": cloud_messages,
+                                "temperature": 0.15,
+                                "response_format": {"type": "json_object"},
+                                **({"max_tokens": settings.vision_max_tokens} if images else {}),
+                            },
+                        )
                     response.raise_for_status()
                     payload = response.json()
+                    if payload["choices"][0].get("finish_reason") == "length":
+                        raise ModelError("模型输出达到长度上限，结果不完整；请拆分内容或提高输出上限")
                     content = payload["choices"][0]["message"]["content"]
                     usage = payload.get("usage") or {}
                     self.usage = (usage.get("prompt_tokens"), usage.get("completion_tokens"))

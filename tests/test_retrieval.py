@@ -18,6 +18,45 @@ class FakeModel:
 
 
 class RetrievalTests(unittest.TestCase):
+    def test_fast_route_applies_configured_reranker_to_candidates(self):
+        from contextlib import nullcontext
+        from types import SimpleNamespace
+        from backend.app.config import SettingsUpdate
+
+        class Inputs(dict):
+            def to(self, device):
+                return self
+
+        class RankingModel:
+            device = "cpu"
+
+            def __call__(self, **kwargs):
+                class Logits:
+                    def reshape(self, *args):
+                        return self
+
+                    def cpu(self):
+                        return self
+
+                    def tolist(self):
+                        return [-1.0, 5.0]
+
+                return SimpleNamespace(logits=Logits())
+
+        with tempfile.TemporaryDirectory() as folder:
+            client = TestClient(create_app(folder))
+            for label in ["甲", "乙"]:
+                client.post("/documents/text", json={"title": label, "text": "糖尿病软件标签" + label})
+            baseline = client.post("/search", json={"query": "糖尿病"}).json()["items"]
+            client.app.state.settings.update(SettingsUpdate(use_reranker=True))
+            with (
+                patch("backend.app.retrieval.reranker", return_value=(lambda *a, **kw: Inputs(), RankingModel())),
+                patch.dict("sys.modules", {"torch": SimpleNamespace(inference_mode=nullcontext)}),
+            ):
+                result = client.post("/search", json={"query": "糖尿病"}).json()
+            self.assertEqual(result["items"][0]["id"], baseline[1]["id"])
+            self.assertIn("reranker", result["mode"])
+
     def test_incremental_vectors_resume_and_model_change_discards_partial_batches(self):
         import numpy as np
 
@@ -58,8 +97,7 @@ class RetrievalTests(unittest.TestCase):
             ):
                 retriever.build()
                 settings = client.get("/settings").json()
-                settings.pop("cloud_api_key_configured")
-                settings.pop("cloud_api_key_from_environment")
+                settings = {k: v for k, v in settings.items() if not k.endswith(("_configured", "_from_environment"))}
                 settings["use_vectors"] = True
                 client.put("/settings", json=settings)
                 final = client.app.state.db.chunks()[0]
@@ -72,7 +110,7 @@ class RetrievalTests(unittest.TestCase):
     def test_vector_index_invalidates_after_document_change(self):
         import numpy as np
 
-        def fake_embeddings(texts, device):
+        def fake_embeddings(texts, device, model_path=None):
             return np.tile(np.array([[1.0, 0.0]], dtype="float32"), (len(texts), 1))
 
         with (

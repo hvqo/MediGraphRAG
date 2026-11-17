@@ -118,7 +118,13 @@ onMounted(async () => {
           <span class="breadcrumb">/ {{ active.label }}</span></span
         ><span class="provider-badge"
           ><span class="status-dot"></span
-          >{{ status?.provider === "cloud" ? "云端模型" : "本地 Ollama" }}</span
+          >{{
+            status?.provider === "cloud"
+              ? "云端模型"
+              : status?.provider === "openai"
+                ? "本地兼容服务"
+                : "本地 Ollama"
+          }}</span
         >
       </header>
       <main>

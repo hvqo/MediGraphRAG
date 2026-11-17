@@ -36,7 +36,7 @@ def create_app(data_dir=None, personal=None):
         if personal:
             await shutdown_libraries(application.state.libraries)
 
-    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.6.0", lifespan=lifespan)
+    app = FastAPI(title="MediGraphRAG 医学知识与出题平台", version="0.7.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=os.getenv("MEDIGRAPH_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","),
@@ -104,7 +104,8 @@ def create_app(data_dir=None, personal=None):
 
     @app.get("/status")
     def status():
-        embedding, reranker = model_paths()
+        _, reranker = model_paths()
+        embedding = app.state.retriever.embedding_path()
         weights = lambda directory: any(
             (directory / name).exists() for name in ["model.safetensors", "pytorch_model.bin"]
         )
@@ -113,6 +114,8 @@ def create_app(data_dir=None, personal=None):
             "provider": app.state.settings.get().provider,
             "embedding_ready": weights(embedding),
             "reranker_ready": weights(reranker),
+            "embedding_model": embedding.name,
+            "reranker_model": reranker.name,
             "neo4j_configured": bool(os.getenv("MEDIGRAPH_NEO4J_PASSWORD")),
             "message": "服务已启动；资料导入与关键词检索不依赖本地模型权重",
         }
@@ -146,6 +149,10 @@ def create_app(data_dir=None, personal=None):
     @app.post("/settings/test-review")
     async def test_review_settings():
         return await app.state.model.snapshot("review").check()
+
+    @app.post("/settings/test-vision")
+    async def test_vision_settings():
+        return await app.state.model.snapshot("vision").check()
 
     return app
 

@@ -56,7 +56,7 @@ def main():
         "source": "https://github.com/pubmedqa/pubmedqa",
         "pmid": pmid,
         "ocr": "RapidOCR 1.4.4 CPU text-first, vision fallback",
-        "vision_model": "qwen2.5vl:7b",
+        "vision_model": "qwen3-vl:8b-instruct",
         "generation_model": "qwen2.5",
         "scope": "One clean machine-printed abstract rendered to PNG/scanned PDF/embedded Word image; functional smoke test, not representative OCR or clinical accuracy. All original text stays in ignored runtime.",
         "files": [],
@@ -118,7 +118,7 @@ def main():
         report["background"] = row["result"].get("background")
         report["index_ready"] = client.get("/indexes/status").json()["ready"]
         report["graph_relations"] = len(client.get("/relations").json())
-        output = ROOT / "benchmarks/results/multimodal-real.json"
+        output = ROOT / ".runtime/multimodal-0.7-smoke.json"
         output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 

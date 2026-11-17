@@ -15,6 +15,13 @@ const keyword = ref(""),
   busy = ref(false),
   container = ref(null);
 let chart, observer;
+let needsDraw = false;
+function visibleCanvas() {
+  return container.value?.clientWidth > 0 && container.value?.clientHeight > 0;
+}
+function resize() {
+  if (visibleCanvas()) chart?.resize();
+}
 async function search() {
   busy.value = true;
   error.value = "";
@@ -38,7 +45,15 @@ function evidence(edge) {
   );
 }
 function draw() {
-  if (!container.value) return;
+  if (!visibleCanvas()) {
+    needsDraw = true;
+    return;
+  }
+  needsDraw = false;
+  if (!data.value?.nodes?.length) {
+    chart?.clear();
+    return;
+  }
   if (!chart) {
     chart = init(container.value);
     chart.on("click", (e) => {
@@ -90,14 +105,14 @@ function draw() {
     },
     true,
   );
-  chart.resize();
+  resize();
 }
 onMounted(() => {
-  observer = new ResizeObserver(() => chart?.resize());
+  observer = new ResizeObserver(resize);
   observer.observe(container.value);
   search();
 });
-onActivated(() => nextTick(() => chart?.resize()));
+onActivated(() => nextTick(() => (needsDraw || !chart ? draw() : resize())));
 onBeforeUnmount(() => {
   observer?.disconnect();
   chart?.dispose();
