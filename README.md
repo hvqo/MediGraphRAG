@@ -6,9 +6,9 @@
 
 从医学资料到原文依据，从知识理解到教学练习。
 
-Python · FastAPI · Vue 3 · BGE · FAISS · Ollama
+Python · FastAPI · Vue 3 · BGE-M3 · FAISS · llama.cpp
 
-[![Checks](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml) ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+[![Checks](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml/badge.svg?branch=refactor%2Fmedigraphrag)](https://github.com/hvqo/MediGraphRAG/actions/workflows/checks.yml) ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) ![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 
 [功能特性](#功能特性) · [界面预览](#界面预览) · [系统架构](#系统架构) · [快速开始](#快速开始) · [配置说明](#配置说明) · [效果评测](#效果评测) · [项目结构](#项目结构)
 
@@ -20,7 +20,8 @@ MediGraphRAG 面向医学教育与研究，将教材、指南和学习笔记整�
 用户可以直接提问，也可以上传一批图片、PDF 或 Word，要求提炼知识点、生成练习题。
 系统完成资料识别、检索、生成与引用校验，并将文件和处理结果保存到个人资料库。
 
-> 本页介绍 **0.6.0 改造版**，完整版本已发布到 `main`；`refactor/medigraphrag` 保留开发历史。
+> 本页介绍 **0.7.0 改造分支**：Qwen3-VL-8B、本地兼容推理服务与检索适配升级。
+> `main` 保持0.6.0；本轮代码发布在 `refactor/medigraphrag`。详细部署见[模型与运行时升级说明](docs/MODEL_UPGRADE.md)。
 > 原始版本的 [README](https://github.com/hvqo/MediGraphRAG/blob/backup/main-before-refactor-20261027/README.md) 与[代码](https://github.com/hvqo/MediGraphRAG/tree/backup/main-before-refactor-20261027)保留在备份分支。
 
 ## 功能特性
@@ -107,9 +108,9 @@ flowchart TB
 | 前端 | Vue 3、Vue Router、Pinia、TypeScript、Vite | `frontend/src`；入口和新模块使用 TypeScript |
 | 原文与图展示 | PDF.js、ECharts | PDF 页内高亮、原文阅读、概念关联展示 |
 | 后端 | Python、FastAPI、Pydantic | `backend/app` |
-| 多模态解析 | pypdf、DOCX XML、Pillow、pypdfium2、RapidOCR、Qwen2.5-VL | `documents.py`、`multimodal.py`、`ocr.py` |
-| 检索 | BGE、FAISS、BM25、可选重排、审核关系路径 | `retrieval.py`、`ranking.py`、`routing.py` |
-| 生成与教学 | Ollama / OpenAI 兼容接口、引用校验、独立审题 | `llm.py`、`evidence.py`、`questions.py` |
+| 多模态解析 | pypdf、DOCX XML、Pillow、pypdfium2、RapidOCR、Qwen3-VL-8B-Instruct | `documents.py`、`multimodal.py`、`ocr.py` |
+| 检索 | BGE-M3稠密向量（可沿用v1.5）、FAISS、BM25、BGE-reranker-v2-m3、审核关系路径 | `retrieval.py`、`ranking.py`、`routing.py` |
+| 生成与教学 | llama.cpp / LM Studio / Ollama / 云端兼容接口、引用校验、独立审题 | `llm.py`、`evidence.py`、`questions.py` |
 | 持久化 | SQLite、原文件、FAISS 索引、版本化迁移 | 每个本机浏览器档案独立保存 |
 | 工程验证 | unittest、Ruff、vue-tsc、Playwright、GitHub Actions | `tests`、`scripts`、`.github` |
 
@@ -146,7 +147,7 @@ Notebook 整理记录见[源码布局](docs/SOURCE_LAYOUT.md)；当前评测尚�
 获取项目，并激活现有虚拟环境。首次使用可创建环境：
 
 ```bash
-git clone https://github.com/hvqo/MediGraphRAG.git
+git clone --branch refactor/medigraphrag https://github.com/hvqo/MediGraphRAG.git
 cd MediGraphRAG
 python -m venv .venv
 ```
@@ -172,15 +173,16 @@ python main.py
 
 ### 3. 配置模型，添加第一份资料
 
-在“更多工具 → 模型与设置”中选择本地或云端文字模型。本地默认模型为 `qwen2.5`，
-图示识别使用 `qwen2.5vl:7b`，可按需准备：
+在“更多工具 → 模型与设置”中分别配置文字、视觉与审题模型。推荐本机使用项目提供的
+llama.cpp服务，文字和视觉共享Qwen3-VL-8B-Instruct；也支持LM Studio、本地Ollama和云端兼容接口。
+Windows首次准备与启动见[详细步骤](docs/MODEL_UPGRADE.md)。Ollama方式需要0.12.7或更新版本：
 
 ```bash
 ollama pull qwen2.5
-ollama pull qwen2.5vl:7b
+ollama pull qwen3-vl:8b-instruct
 ```
 
-返回问答页，添加资料并输入处理要求。普通文字解析与关键词检索可先行使用，
+文字与视觉可用不同服务；本地兼容接口无需云端密钥。返回问答页，添加资料并输入处理要求。普通文字解析与关键词检索可先行使用，
 语义检索需要完整模型权重；上传任务会在后台自动建立可用索引。
 
 <details>
@@ -215,7 +217,8 @@ python scripts/prepare_medical_assets.py
 
 ## 效果评测
 
-已使用公开医学 / 生物医学数据和本机真实模型开展检索与答案对照，逐题结果可复现。
+下列为**0.6.0原模型与原检索设置**的公开医学 / 生物医学数据实测，逐题结果可复现。
+0.7.0的新模型、新重排与解析改动仅做软件功能验证，尚未完成同条件医学对照；不能将下列成绩直接套用到新版。
 
 | 数据集 | 本轮实验范围 | 结果记录 |
 | --- | --- | --- |

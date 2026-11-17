@@ -11,8 +11,7 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(client.get("/health").status_code, 200)
             self.assertEqual(client.get("/api/health").status_code, 200)
             payload = client.get("/settings").json()
-            payload.pop("cloud_api_key_configured")
-            payload.pop("cloud_api_key_from_environment")
+            payload = {k: v for k, v in payload.items() if not k.endswith(("_configured", "_from_environment"))}
             payload["cloud_api_key"] = "test-private-value"
             response = client.put("/settings", json=payload)
             self.assertEqual(response.status_code, 200)

@@ -3,18 +3,38 @@ import { onMounted, ref } from "vue";
 import { api, send } from "../api";
 const form = ref(null),
   key = ref(null),
+  visionKey = ref(null),
+  reviewKey = ref(null),
   status = ref(null),
   index = ref(null),
   error = ref(""),
   message = ref(""),
   busy = ref(false);
 const emit = defineEmits(["changed"]);
+async function testVision() {
+  await save(false);
+  if (error.value) return;
+  busy.value = true;
+  try {
+    const result = await send("/settings/test-vision", {});
+    if (!result.ok) error.value = result.message;
+    else message.value = result.message;
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    busy.value = false;
+  }
+}
 async function testReview() {
   await save(false);
   if (error.value) return;
   busy.value = true;
   try {
-    message.value = (await send("/settings/test-review", {})).message;
+    const result = await send("/settings/test-review", {});
+    if (!result.ok) {
+      error.value = result.message;
+      message.value = "";
+    } else message.value = result.message;
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -33,21 +53,32 @@ async function save(test = false) {
   error.value = "";
   message.value = "";
   try {
-    const {
-      cloud_api_key_configured,
-      cloud_api_key_from_environment,
-      ...value
-    } = form.value;
+    const value = Object.fromEntries(
+      Object.entries(form.value).filter(
+        ([field]) =>
+          !field.endsWith("_configured") &&
+          !field.endsWith("_from_environment"),
+      ),
+    );
     form.value = await send(
       "/settings",
-      { ...value, cloud_api_key: key.value },
+      {
+        ...value,
+        cloud_api_key: key.value,
+        vision_api_key: visionKey.value,
+        review_api_key: reviewKey.value,
+      },
       "PUT",
     );
     key.value = null;
+    visionKey.value = null;
+    reviewKey.value = null;
     emit("changed");
-    message.value = test
-      ? (await send("/settings/test", {})).message
-      : "设置已保存，后续生成将使用当前配置。";
+    if (test) {
+      const result = await send("/settings/test", {});
+      if (!result.ok) error.value = result.message;
+      else message.value = result.message;
+    } else message.value = "设置已保存，后续生成将使用当前配置。";
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -122,6 +153,7 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
         >
           <option value="same">与生成模型相同</option>
           <option value="ollama">本地 Ollama</option>
+          <option value="openai">本地兼容服务（llama.cpp / LM Studio）</option>
           <option value="cloud">云端模型</option>
         </select></label
       >
@@ -133,6 +165,41 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
       <p class="help">
         审题可独立选择模型；服务地址与密钥使用下方对应来源的设置。同一模型复核会在题目记录中注明。
       </p>
+      <template v-if="form.review_provider !== 'same'">
+        <label
+          >独立审题服务地址（可选）<input
+            v-model="form.review_base_url"
+            type="url"
+            placeholder="留空沿用生成模型对应来源的地址"
+        /></label>
+        <label
+          v-if="
+            form.review_provider === 'cloud' ||
+            form.review_provider === 'openai'
+          "
+          >独立审题密钥（可选）<input
+            type="password"
+            :value="reviewKey || ''"
+            @input="reviewKey = $event.target.value"
+            :placeholder="
+              form.review_api_key_configured
+                ? '已配置；留空保留'
+                : '未配置时沿用文字云端密钥'
+            "
+            autocomplete="new-password"
+        /></label>
+        <button
+          v-if="
+            form.review_api_key_configured &&
+            !form.review_api_key_from_environment
+          "
+          type="button"
+          class="text-button danger"
+          @click="reviewKey = ''"
+        >
+          清除独立审题密钥（保存后生效）
+        </button>
+      </template>
       <fieldset class="provider-choice">
         <legend class="sr-only">模型提供方式</legend>
         <label :class="{ chosen: form.provider === 'ollama' }"
@@ -143,6 +210,18 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
           ><input type="radio" v-model="form.provider" value="cloud" /><strong
             >云端模型</strong
           ><small>使用兼容的云端接口</small></label
+        >
+        <label :class="{ chosen: form.provider === 'openai' }"
+          ><input
+            type="radio"
+            v-model="form.provider"
+            value="openai"
+            @change="
+              form.cloud_base_url ||= 'http://127.0.0.1:8081/v1';
+              form.cloud_model ||= 'qwen3-vl:8b-instruct';
+            "
+          /><strong>本地兼容服务</strong
+          ><small>llama.cpp / LM Studio，无需云端密钥</small></label
         >
       </fieldset>
       <template v-if="form.provider === 'ollama'"
@@ -203,8 +282,11 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
           清除已保存密钥
         </button>
         <p class="help">
-          云端服务需支持 OpenAI-compatible Chat Completions 与 JSON
-          输出。请求会发送检索到的资料片段，调用费用由服务商计收。
+          {{
+            form.provider === "openai"
+              ? "本地服务需支持 /v1/chat/completions、图片及JSON输出。未开启认证时密钥可以留空。llama.cpp默认端口8081，LM Studio常用1234。"
+              : "云端服务需支持OpenAI-compatible Chat Completions与JSON输出。请求会发送检索到的资料片段，调用费用由服务商计收。"
+          }}
         </p></template
       ><label
         >生成超时（秒）<input
@@ -226,7 +308,127 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
       </div>
     </section>
     <section class="panel stack">
+      <h2>图片与文档理解</h2>
+      <p class="help">
+        普通文字优先直接读取，清晰文字图片优先OCR；图示或识别不确定时才使用视觉模型。用户提问时无需选择。
+      </p>
+      <label
+        >视觉模型来源<select
+          v-model="form.vision_provider"
+          aria-label="视觉模型来源"
+        >
+          <option value="ollama">本地 Ollama</option>
+          <option value="openai">本地兼容服务（llama.cpp / LM Studio）</option>
+          <option value="cloud">云端兼容接口</option>
+        </select></label
+      >
+      <label
+        >视觉服务地址<input
+          v-model="form.vision_base_url"
+          type="url"
+          :placeholder="
+            form.vision_provider === 'ollama'
+              ? 'http://127.0.0.1:11434'
+              : form.vision_provider === 'openai'
+                ? 'http://127.0.0.1:8081/v1'
+                : 'https://服务商地址/v1'
+          "
+          required
+      /></label>
+      <label
+        >视觉模型名称<input
+          v-model="form.vision_model"
+          placeholder="qwen3-vl:8b-instruct"
+          required
+      /></label>
+      <template v-if="form.vision_provider === 'cloud'">
+        <label
+          >视觉接口密钥<input
+            type="password"
+            :value="visionKey || ''"
+            @input="visionKey = $event.target.value"
+            :placeholder="
+              form.vision_api_key_configured
+                ? '已配置；留空保留'
+                : '填写视觉服务密钥'
+            "
+            autocomplete="new-password"
+        /></label>
+        <p class="help">
+          云端视觉会发送需要识别的原页图片，请选择你认可的服务。视觉密钥独立保存。
+        </p>
+        <button
+          v-if="
+            form.vision_api_key_configured &&
+            !form.vision_api_key_from_environment
+          "
+          type="button"
+          class="text-button danger"
+          @click="visionKey = ''"
+        >
+          清除视觉密钥（保存后生效）
+        </button>
+      </template>
+      <p v-if="form.vision_provider === 'openai'" class="help">
+        复用本机llama.cpp或LM
+        Studio的视觉服务。默认无需密钥，服务须加载视觉投影文件；此接口不会自动下载模型。
+      </p>
+      <button
+        type="button"
+        class="secondary"
+        :disabled="busy"
+        @click="testVision"
+      >
+        保存并检查视觉连接
+      </button>
+      <details>
+        <summary>文档理解高级设置</summary>
+        <div class="stack section-gap">
+          <label
+            >单次识别超时（秒）<input
+              v-model.number="form.vision_timeout"
+              type="number"
+              min="10"
+              max="1200"
+          /></label>
+          <label
+            >图片最长边（像素）<input
+              v-model.number="form.vision_image_max_edge"
+              type="number"
+              min="1024"
+              max="4096"
+          /></label>
+          <label
+            >视觉上下文上限<input
+              v-model.number="form.vision_context_tokens"
+              type="number"
+              min="4096"
+              max="32768"
+          /></label>
+          <label
+            >视觉输出上限<input
+              v-model.number="form.vision_max_tokens"
+              type="number"
+              min="512"
+              max="8192"
+          /></label>
+          <p class="help">
+            默认Qwen3-VL-8B-Instruct。llama.cpp可让文字与视觉共享同一实例；Ollama会在识别后释放视觉模型。大页可提高输出上限，显存较小时控制上下文。
+          </p>
+        </div>
+      </details>
+    </section>
+    <section class="panel stack">
       <h2>检索设置</h2>
+      <label
+        >嵌入模型<select v-model="form.embedding_model">
+          <option value="auto">
+            自动使用已安装的BGE-M3，未安装时沿用旧模型
+          </option>
+          <option value="bge-m3">BGE-M3（中英文统一稠密向量）</option>
+          <option value="bge-v1.5">旧版BGE v1.5</option>
+        </select></label
+      >
       <label
         >最多引用的片段数<input
           type="number"
@@ -238,7 +440,8 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
         向量检索</label
       >
       <p class="help">
-        模型文件{{ status?.embedding_ready ? "已就绪" : "尚未下载完整" }} ·
+        {{ status?.embedding_model }}
+        {{ status?.embedding_ready ? "已就绪" : "尚未下载完整" }} ·
         {{ index?.message }}
       </p>
       <label class="check-label"
@@ -246,9 +449,10 @@ onMounted(() => load().catch((e) => (error.value = e.message)));
         重排序</label
       >
       <p class="help">
-        重排模型{{
+        {{ status?.reranker_model }}
+        {{
           status?.reranker_ready ? "已就绪" : "尚未下载完整"
-        }}。不可用时保留关键词检索结果，并显示提示。
+        }}。自动快速检索也会按此设置重排；不可用时保留原召回结果并显示提示。
       </p>
       <label
         >检索模型运行设备<select

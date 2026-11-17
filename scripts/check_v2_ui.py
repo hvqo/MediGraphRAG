@@ -121,7 +121,10 @@ def main():
         model_thread.start()
         app.state.settings.update(
             SettingsUpdate(
-                ollama_base_url=f"http://127.0.0.1:{model_server.server_port}", ollama_model="HTTP-software-stub"
+                ollama_base_url=f"http://127.0.0.1:{model_server.server_port}",
+                ollama_model="HTTP-software-stub",
+                vision_base_url=f"http://127.0.0.1:{model_server.server_port}",
+                vision_model="HTTP-software-stub",
             )
         )
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
@@ -138,7 +141,7 @@ def main():
                 browser = playwright.chromium.launch(channel="chrome", headless=False, args=["--headless=new"])
                 page = browser.new_page(viewport={"width": 1440, "height": 1000})
                 errors = []
-                page.on("pageerror", lambda error: errors.append(str(error)))
+                page.on("pageerror", lambda error: errors.append(error.stack))
                 requests = []
                 page.on(
                     "request",
@@ -269,6 +272,9 @@ def main():
                     timeout=30000
                 )
                 expect(page.get_by_text("3 / 3 份文件已读取 · 原文件已自动保存", exact=True)).to_be_visible()
+                operation = client.get("/workspace/operations").json()[0]
+                assert len(operation["result"]["files"]) == 3
+                assert all(f["status"] == "ready" for f in operation["result"]["files"]), operation["result"]["files"]
                 expect(page.get_by_role("button", name="核对通过，加入练习", exact=True)).to_be_visible()
                 if capture:
                     page.get_by_text("更多工具", exact=True).click()
