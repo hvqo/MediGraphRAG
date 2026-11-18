@@ -12,6 +12,7 @@ export const navigation = [
   { id: "evaluations", label: "效果评测", icon: "▥" },
   { id: "traces", label: "运行与回放", icon: "↺" },
   { id: "settings", label: "模型与设置", icon: "⚙" },
+  { id: "account", label: "账号与登录", icon: "◉" },
 ];
 export const primaryNavigation = ["ask", "documents", "generate", "study"].map(
   (id) => navigation.find((item) => item.id === id)!,
@@ -22,6 +23,11 @@ export const moreNavigation = navigation.filter(
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
+    {
+      path: "/account",
+      name: "account",
+      component: () => import("./components/AccountView.vue"),
+    },
     {
       path: "/evaluations",
       name: "evaluations",

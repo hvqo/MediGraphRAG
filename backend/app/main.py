@@ -21,15 +21,18 @@ from backend.app.evaluations import routes as evaluation_routes
 from contextlib import asynccontextmanager
 from backend.app.operations import Operations, routes as operation_routes
 from backend.app.personal import PersonalLibraries, PersonalMiddleware, shutdown as shutdown_libraries
+from backend.app.accounts import AccountError, AccountPolicy, AccountStore
+from backend.app.account_routes import AccountMiddleware, routes as account_routes
 
 
-def create_app(data_dir=None, personal=None):
+def create_app(data_dir=None, personal=None, shared_settings=None, model_budget=None, account_policy=None):
     personal = data_dir is None if personal is None else personal
 
     @asynccontextmanager
     async def lifespan(application):
-        application.state.jobs.recover()
-        application.state.operations.start()
+        if not personal:
+            application.state.jobs.recover()
+            application.state.operations.start()
         yield
         await application.state.operations.shutdown()
         await application.state.jobs.shutdown()
@@ -44,9 +47,10 @@ def create_app(data_dir=None, personal=None):
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type"],
     )
-    app.state.settings = SettingsStore(data_dir)
-    app.state.db = Database(app.state.settings.directory)
-    app.state.model = ModelClient(app.state.settings, app.state.db)
+    local_settings = SettingsStore(data_dir)
+    app.state.settings = shared_settings or local_settings
+    app.state.db = Database(local_settings.directory)
+    app.state.model = ModelClient(app.state.settings, app.state.db, budget=model_budget)
     app.state.documents = DocumentStore(app.state.db)
     app.include_router(document_routes(app.state.documents))
     app.state.retriever = Retriever(app.state.db, app.state.settings)
@@ -62,10 +66,33 @@ def create_app(data_dir=None, personal=None):
     app.state.operations = Operations(app)
     app.include_router(operation_routes(app.state.operations))
     if personal:
+        policy = account_policy or AccountPolicy.environment()
+        accounts = AccountStore(local_settings.directory, policy) if policy.required else None
+        app.state.accounts = accounts
         app.state.libraries = PersonalLibraries(
-            app.state.settings.directory, lambda directory: create_app(directory, personal=False)
+            local_settings.directory,
+            lambda directory: create_app(
+                directory,
+                personal=False,
+                shared_settings=app.state.settings if accounts else None,
+                model_budget=(lambda: accounts.charge(directory.name)) if accounts else None,
+            ),
         )
-        app.add_middleware(PersonalMiddleware, registry=app.state.libraries)
+        if accounts:
+            app.include_router(account_routes(accounts))
+            app.add_middleware(AccountMiddleware, store=accounts, registry=app.state.libraries)
+        else:
+            app.add_middleware(PersonalMiddleware, registry=app.state.libraries)
+
+    if not personal or not app.state.accounts:
+
+        @app.get("/auth/status")
+        def local_auth_status():
+            return {"enabled": False, "user": None, "csrf_token": "", "registration_enabled": False}
+
+    @app.exception_handler(AccountError)
+    async def account_error(request: Request, error: AccountError):
+        return JSONResponse(status_code=error.status_code, content={"detail": str(error)})
 
     @app.middleware("http")
     async def api_alias(request, call_next):
@@ -90,7 +117,7 @@ def create_app(data_dir=None, personal=None):
 
     @app.exception_handler(ModelError)
     async def model_error(request: Request, error: ModelError):
-        return JSONResponse(status_code=503, content={"detail": str(error)})
+        return JSONResponse(status_code=error.status_code, content={"detail": str(error)})
 
     @app.get("/health")
     def health():

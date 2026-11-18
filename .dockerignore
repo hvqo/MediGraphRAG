@@ -1,0 +1,15 @@
+*
+!Dockerfile
+!requirements-runtime.txt
+!requirements-ocr.txt
+!requirements-retrieval.txt
+!main.py
+!backend/
+!backend/**
+!frontend/
+!frontend/**
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.sqlite3
+**/.env

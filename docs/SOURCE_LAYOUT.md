@@ -16,6 +16,15 @@ GitHub 通过 Linguist 统计语言，而且仓库统计在推送到**默认分�
 
 ## 已进行的真实迁移
 
+2026-11-18 新分支 `feature/accounts-and-deployment` 补充：
+
+- `backend/app/accounts.py`：账号库、Argon2id 密码、可撤销会话、限流与模型额度。
+- `backend/app/account_routes.py`：登录与管理 API、权限边界、按账号派发个人资料库。
+- `frontend/src/stores/auth.ts`、`AuthView.vue`、`AccountView.vue`：登录状态、登录页、改密与管理员账号管理。
+- `Dockerfile`、`compose.yaml`、`deploy/`：前后端镜像、HTTPS 入口和留白服务器配置。
+- `tests/test_accounts.py`、`scripts/check_accounts_ui.py`：隔离、权限、会话和真实浏览器流程验证。
+- 主分支仍为 0.7.0 发布版本；此轮没有合并 main。
+
 | 原位置 | 新位置 |
 | --- | --- |
 | `medigraph/*.py` 与 API 实现 | `backend/app/*.py` |

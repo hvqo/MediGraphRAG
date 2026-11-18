@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onActivated, ref } from "vue";
 import { api, send } from "../api";
+import { useAuth } from "../stores/auth";
+const auth = useAuth();
 import EvidenceList from "./EvidenceList.vue";
 import type { Evidence } from "../types";
 type Exercise = {
@@ -46,7 +48,9 @@ type Statistics = {
   }[];
 };
 const learner = ref(
-    localStorage.getItem("medigraph-learner") || "我的学习档案",
+    auth.enabled
+      ? auth.user?.username || "我的学习档案"
+      : localStorage.getItem("medigraph-learner") || "我的学习档案",
   ),
   questions = ref<Exercise[]>([]),
   selected = ref(""),
@@ -126,12 +130,20 @@ onActivated(load);
   <p v-if="error" class="notice error" role="alert">{{ error }}</p>
   <section class="panel stack">
     <div class="inline">
-      <label>本机学习档案<input v-model="learner" maxlength="64" /></label
+      <label
+        >{{ auth.enabled ? "练习档案" : "本机学习档案"
+        }}<input v-model="learner" maxlength="64" /></label
       ><button class="secondary" :disabled="!learner.trim()" @click="profile">
         使用此档案
       </button>
     </div>
-    <p class="help">档案仅用于本机区分学习记录，不是登录账户或权限隔离。</p>
+    <p class="help">
+      {{
+        auth.enabled
+          ? "练习记录自动保存到当前账号；档案名称只用于区分该账号内的练习记录。"
+          : "档案仅用于本机区分学习记录，不是登录账户或权限隔离。"
+      }}
+    </p>
     <div class="inline">
       <button
         :class="tab === 'practice' ? 'primary' : 'secondary'"

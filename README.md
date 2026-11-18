@@ -24,6 +24,9 @@ MediGraphRAG 面向医学教育与研究，将教材、指南和学习笔记整�
 > `refactor/medigraphrag` 保留开发历史；升级前的main保存在 `backup/main-before-v07-20261117`。详细部署见[模型与运行时升级说明](docs/MODEL_UPGRADE.md)。
 > 原始版本的 [README](https://github.com/hvqo/MediGraphRAG/blob/backup/main-before-refactor-20261027/README.md) 与[代码](https://github.com/hvqo/MediGraphRAG/tree/backup/main-before-refactor-20261027)保留在备份分支。
 
+> 本分支 `feature/accounts-and-deployment` 新增账号登录与服务器部署准备，尚未合并 main。
+> 服务器、域名与模型接口留白，当前没有公网部署；见[账号与部署说明](docs/SERVER_DEPLOYMENT.md)。
+
 ## 功能特性
 
 | | 能力 | 说明 |
@@ -34,8 +37,18 @@ MediGraphRAG 面向医学教育与研究，将教材、指南和学习笔记整�
 | ✍️ | **智能出题** | 从资料中的知识点生成单选、多选或病例题，提供答案、解析和逐项审查意见。 |
 | ✅ | **题库与教学** | 教师审核、编辑重审、蓝图组卷、共享病例、JSON/CSV 导出及练习复习。 |
 | 🗂️ | **个人档案** | 保存资料、题目与任务进度，后台建立向量索引和提及关系，后续问答复用已上传内容。 |
+| 👤 | **账号与登录（本分支）** | 注册、登录、退出、改密；资料库随账号保存。管理员统一配置模型并管理账号，普通用户直接使用。 |
 
 ## 界面预览
+
+### 登录后进入自己的资料库
+
+账号模式只需输入账号和密码；首次注册后直接进入工作台，后续换设备登录可继续使用。
+本机免登录模式保留。服务器租好后填写域名与模型服务配置即可继续部署验收。
+
+![账号登录入口：文档和题目随账号保存](docs/images/account-login.png)
+
+详细配置、管理员创建与部署边界见[服务器部署说明](docs/SERVER_DEPLOYMENT.md)。
 
 ### 直接提问，连同出处一起理解
 
@@ -256,7 +269,7 @@ MediGraphRAG/
 ## 使用说明
 
 本项目用于医学教育与研究，生成答案和题目需要结合原始资料核对，并由专业人员审核。
-当前个人档案采用本机浏览器身份隔离；关系查询使用 SQLite，Neo4j 同步适配尚未实连验收。
+默认本机模式采用浏览器身份隔离；本分支可开启账号模式，以账号隔离资料库。关系查询使用 SQLite，Neo4j 同步适配尚未实连验收。
 图片经 OCR 或视觉模型转为文本参与检索，独立图像向量检索尚未实现。
 长文知识点提炼采用有限片段采样，完整处理范围见[个人工作台说明](docs/PERSONAL_WORKSPACE.md)。
 
@@ -268,6 +281,7 @@ python -m unittest discover -s tests -v
 ruff check backend tests scripts main.py
 python scripts/check_repository.py
 python scripts/check_v2_ui.py --capture-docs
+python scripts/check_accounts_ui.py
 cd frontend
 npm run format:check
 npm run typecheck
@@ -275,6 +289,7 @@ npm run build
 ```
 
 - [个人资料库与任务流程](docs/PERSONAL_WORKSPACE.md)
+- [账号登录与服务器部署](docs/SERVER_DEPLOYMENT.md)
 - [自动检索与图谱设计](docs/ADAPTIVE_RAG_DESIGN.md)
 - [蓝图、病例、学习与版本管理](docs/V2_GUIDE.md)
 - [源码整理与 Notebook 迁移](docs/SOURCE_LAYOUT.md)

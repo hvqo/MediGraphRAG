@@ -3,8 +3,10 @@
 !.env.example
 !.gitattributes
 !.editorconfig
+!.dockerignore
 !.github/
 !.github/**
+deploy/server.env
 environment-check.json
 environment-packages.json
 *.sqlite3

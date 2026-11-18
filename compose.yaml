@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_RETRIEVAL: "true"
+    restart: unless-stopped
+    env_file: deploy/server.env
+    environment:
+      MEDIGRAPH_AUTH_REQUIRED: "true"
+      MEDIGRAPH_COOKIE_SECURE: "true"
+      MEDIGRAPH_DEPLOYMENT_MODE: public
+      MEDIGRAPH_PUBLIC_ORIGIN: https://${DOMAIN:?Please fill DOMAIN in deploy/server.env}
+      MEDIGRAPH_DATA_DIR: /app/.runtime
+      MEDIGRAPH_EMBEDDING_PATH: /app/.runtime/models/bge-m3
+      MEDIGRAPH_RERANKER_PATH: /app/.runtime/models/bge-reranker-v2-m3
+    volumes:
+      - app_data:/app/.runtime
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: 8g
+    cpus: 4
+    logging:
+      options: {max-size: "10m", max-file: "3"}
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Please fill DOMAIN in deploy/server.env}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      options: {max-size: "10m", max-file: "3"}
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:

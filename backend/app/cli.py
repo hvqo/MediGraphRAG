@@ -15,12 +15,20 @@ def main(argv=None):
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true")
+    parser.add_argument("--accounts", action="store_true", help="Preview account login on loopback only")
     parser.add_argument("--library", help="Local personal library ID for offline commands")
     commands = parser.add_subparsers(dest="command")
     serve = commands.add_parser("serve", help="Start API and the built Vue frontend")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--reload", action="store_true")
+    serve.add_argument("--accounts", action="store_true")
+    for name in ("create-admin", "reset-password"):
+        account = commands.add_parser(name, help="Offline account administration")
+        account.add_argument("username")
+        account.add_argument(
+            "--password-stdin", action="store_true", help="Read password from standard input instead of a prompt"
+        )
     ingest = commands.add_parser("import-documents", help="Import PDF, DOCX, TXT or Markdown")
     ingest.add_argument("path", type=Path)
     ingest.add_argument("--recursive", action="store_true")
@@ -31,9 +39,44 @@ def main(argv=None):
     commands.add_parser("build-index", help="Build optional BGE/FAISS vectors for imported evidence")
     commands.add_parser("status", help="Show document counts and index status")
     args = parser.parse_args(argv)
+    if args.command in {"create-admin", "reset-password"}:
+        import getpass
+        import sys
+        from .accounts import AccountPolicy, AccountStore, AccountError
+
+        password = (
+            sys.stdin.readline().rstrip("\r\n")
+            if args.password_stdin
+            else getpass.getpass("Password (12–128 characters): ")
+        )
+        if not args.password_stdin and password != getpass.getpass("Confirm password: "):
+            parser.error("Passwords do not match")
+        try:
+            store = AccountStore(SettingsStore().directory, AccountPolicy.environment())
+            if args.command == "create-admin":
+                store.create(args.username, password, "admin")
+            else:
+                user = next(
+                    (u for u in store.list_users() if u["username"].casefold() == args.username.casefold()), None
+                )
+                if not user:
+                    parser.error("Account not found")
+                store.password(user["id"], password)
+        except AccountError as error:
+            parser.error(str(error))
+        print("Account updated. No password is printed or saved as plaintext.")
+        return 0
     if args.command in (None, "serve"):
         import uvicorn
         import os
+
+        if args.accounts:
+            if args.host not in {"127.0.0.1", "localhost", "::1"} or os.getenv("MEDIGRAPH_DEPLOYMENT_MODE") == "public":
+                parser.error(
+                    "--accounts is only for local loopback preview; public deployments use the deployment template"
+                )
+            os.environ["MEDIGRAPH_AUTH_REQUIRED"] = "true"
+            os.environ["MEDIGRAPH_COOKIE_SECURE"] = "false"
 
         runtime = Path(__file__).resolve().parents[2] / ".runtime/local-inference.json"
         if runtime.exists():

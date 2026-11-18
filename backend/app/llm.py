@@ -16,14 +16,17 @@ def local_gate(address):
 
 
 class ModelError(RuntimeError):
-    pass
+    def __init__(self, message, status_code=503):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class ModelClient:
-    def __init__(self, store, db=None, role="generation", template="structured-v1"):
+    def __init__(self, store, db=None, role="generation", template="structured-v1", budget=None):
         self.store = store
         self.db, self.role, self.template = db, role, template
         self.usage = (None, None)
+        self.budget = budget
 
     def _headers(self):
         return {"Authorization": "Bearer " + self.store.key()} if self.store.key() else {}
@@ -61,6 +64,7 @@ class ModelClient:
             self.db,
             role or self.role,
             template or self.template,
+            budget=self.budget,
         )
 
     async def check(self):
@@ -111,6 +115,8 @@ class ModelClient:
 
         source_revision = revision(self.db.chunks()) if self.db else ""
         try:
+            if self.budget:
+                self.budget()
             output = await self._json(system, prompt, images) if images else await self._json(system, prompt)
             return output
         except ModelError as exc:

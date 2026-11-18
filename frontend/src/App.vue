@@ -5,6 +5,16 @@ import { storeToRefs } from "pinia";
 import { navigation, primaryNavigation, moreNavigation } from "./router";
 import { useWorkspace } from "./stores/workspace";
 import { api } from "./api";
+import { useAuth } from "./stores/auth";
+import AuthView from "./components/AuthView.vue";
+const auth = useAuth();
+const visibleMore = computed(() =>
+  moreNavigation.filter(
+    (item) =>
+      (item.id !== "account" || auth.enabled) &&
+      (item.id !== "settings" || !auth.enabled || auth.user?.role === "admin"),
+  ),
+);
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace();
@@ -29,15 +39,51 @@ function navigate(id: string) {
   if (router.hasRoute(id)) router.push({ name: id });
 }
 onMounted(async () => {
-  try {
-    profile.value = await api("/profile");
-  } catch {}
-  await refresh();
+  await auth.initialize();
 });
+watch(
+  () => auth.ready && (!auth.enabled || auth.user?.id),
+  async (identity) => {
+    if (!identity) return;
+    if (
+      auth.enabled &&
+      auth.user?.role !== "admin" &&
+      route.name === "settings"
+    )
+      navigate("ask");
+    try {
+      profile.value = await api("/profile");
+    } catch {}
+    await refresh();
+  },
+);
+watch(
+  () => route.name,
+  (name) => {
+    if (name === "settings" && auth.enabled && auth.user?.role !== "admin")
+      navigate("ask");
+  },
+);
+async function logout() {
+  try {
+    await auth.logout();
+  } catch (e) {
+    workspace.error = (e as Error).message;
+  }
+}
 </script>
 
 <template>
-  <div class="app-shell">
+  <main v-if="!auth.ready" class="auth-page">
+    <div>
+      正在连接服务…
+      <p v-if="auth.error" role="alert">
+        {{ auth.error }} <button @click="auth.initialize">重试</button>
+      </p>
+    </div>
+  </main>
+  <AuthView v-else-if="auth.enabled && !auth.user" />
+  <div v-else :key="auth.user?.id || 'local'" class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="#" @click.prevent="navigate('ask')"
         ><svg
@@ -88,7 +134,7 @@ onMounted(async () => {
         <summary>更多工具</summary>
         <nav aria-label="教学与管理工具">
           <button
-            v-for="item in moreNavigation"
+            v-for="item in visibleMore"
             :key="item.id"
             :class="{ active: view === item.id }"
             :aria-current="view === item.id ? 'page' : undefined"
@@ -113,6 +159,16 @@ onMounted(async () => {
     </aside>
     <div class="workspace">
       <header class="topbar">
+        <button
+          v-if="auth.enabled"
+          class="text-button"
+          @click="navigate('account')"
+        >
+          {{ auth.user?.username }}
+        </button>
+        <button v-if="auth.enabled" class="text-button" @click="logout">
+          退出
+        </button>
         <span
           >医学教育工作台
           <span class="breadcrumb">/ {{ active.label }}</span></span
