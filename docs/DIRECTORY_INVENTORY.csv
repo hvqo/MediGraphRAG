@@ -1,8 +1,8 @@
-﻿directory,recursive_file_count,purpose
+directory,recursive_file_count,purpose
 .github,1,根目录工程文件
 .github/workflows,1,GitHub自动检查工作流
-backend,28,当前Python后端包
-backend/app,27,当前Python后端业务模块
+backend,30,当前Python后端包
+backend/app,29,当前Python后端业务模块
 benchmarks,11,评测说明、环境与资产版本清单
 benchmarks/results,8,实验结果JSON，包含实测/对照/失败记录
 config,6,历史模型/MetaGPT YAML配置，非当前网页设置存储
@@ -53,17 +53,18 @@ data/medical-books/腹部影像解剖图谱/images,202,历史医学教材正文�
 data/medical-books/药理学,262,历史医学教材正文或插图，非自动导入的个人库
 data/medical-books/药理学/content,3,历史医学教材正文或插图，非自动导入的个人库
 data/medical-books/药理学/images,257,历史医学教材正文或插图，非自动导入的个人库
-docs,31,项目说明与报告
-docs/images,4,当前界面截图或评测图
+deploy,2,服务器部署配置模板
+docs,34,项目说明与报告
+docs/images,6,当前界面截图或评测图
 docs/legacy,11,原版说明与Notebook迁移记录
 docs/legacy/images,6,原版README/方案图片
 docs/licenses,1,第三方资源许可
-frontend,33,前端工程与构建配置
+frontend,36,前端工程与构建配置
 frontend/public,1,直接复制到构建结果的静态资源
-frontend/src,24,Vue入口、路由、接口、类型和样式
+frontend/src,27,Vue入口、路由、接口、类型和样式
 frontend/src/assets,1,前端静态图片资源
-frontend/src/components,14,Vue业务页面或共用组件
-frontend/src/stores,1,Pinia共享状态
+frontend/src/components,16,Vue业务页面或共用组件
+frontend/src/stores,2,Pinia共享状态
 legacy,28,不参与当前在线主链路的历史代码
 legacy/agent,3,历史MetaGPT Agent
 legacy/experiments,4,Notebook代码迁出的历史Python实验
@@ -77,8 +78,8 @@ model/bge-large-zh-v1.5/1_Pooling,1,模型配置、分词词表、模型说明�
 model/bge-reranker-v2-m3,11,模型配置、分词词表、模型说明或示例图；不代表完整权重已入Git
 model/bge-reranker-v2-m3/assets,5,模型配置、分词词表、模型说明或示例图；不代表完整权重已入Git
 save,3,历史题目JSON/Word导出
-scripts,28,按需执行的启动/环境/验证/评测工具
-tests,12,后端自动化测试
+scripts,30,按需执行的启动/环境/验证/评测工具
+tests,13,后端自动化测试
 web,2,旧后端路径的兼容转发
 web/api,1,旧后端路径的兼容转发
 web/backend,1,旧后端路径的兼容转发

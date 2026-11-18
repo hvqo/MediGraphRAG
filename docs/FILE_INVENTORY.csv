@@ -1,13 +1,17 @@
-﻿path,version_status,purpose
+path,version_status,purpose
+.dockerignore,tracked,容器构建上下文白名单，排除用户资料、模型和密钥
 .editorconfig,tracked,编辑器格式规范
 .env.example,tracked,环境变量示例，不是实际密钥
 .gitattributes,tracked,换行/文件类型属性
 .github/workflows/checks.yml,tracked,GitHub自动检查工作流
 .gitignore,tracked,Git忽略规则
+Dockerfile,tracked,前端构建与非root Python应用镜像，含可选CPU检索
 ENVIRONMENT-WINDOWS.md,tracked,本机Windows环境与原版依赖兼容记录
 README.md,tracked,项目首页/功能/架构/安装/评测
 backend/__init__.py,tracked,Python包标记；当前Python后端包
 backend/app/__init__.py,tracked,Python包标记；当前Python后端业务模块
+backend/app/account_routes.py,tracked,登录与账号管理API、权限边界和账号资料库分派
+backend/app/accounts.py,tracked,账号库、密码哈希、可撤销会话、限流与模型预算
 backend/app/cli.py,tracked,serve、导入资料、search、build-index、status 命令；正式启动入口
 backend/app/concepts.py,tracked,筛除纯来源说明，分散选择正文片段，供0.7分批知识点提炼与覆盖记录使用
 backend/app/config.py,tracked,Settings 校验、settings.json 读写、环境变量、嵌入/重排路径选择
@@ -45,6 +49,7 @@ benchmarks/results/multimodal-real.json,tracked,实验结果JSON，包含实测/
 benchmarks/results/multimodal-vision-baseline.json,tracked,实验结果JSON，包含实测/对照/失败记录
 benchmarks/results/nfcorpus-real.json,tracked,实验结果JSON，包含实测/对照/失败记录
 benchmarks/results/pubmedqa-real.json,tracked,实验结果JSON，包含实测/对照/失败记录
+compose.yaml,tracked,单进程应用、HTTPS网关、持久卷和资源配置
 config/__init__.py,tracked,Python包标记；历史模型/MetaGPT YAML配置，非当前网页设置存储
 config/config.yaml,tracked,历史模型/MetaGPT YAML配置，非当前网页设置存储
 config/config2.yaml,tracked,历史模型/MetaGPT YAML配置，非当前网页设置存储
@@ -4299,6 +4304,8 @@ data/medical-books/药理学/images/Image00255.jpg,tracked,历史医学教材正
 data/medical-books/药理学/images/Image00256.jpg,tracked,历史医学教材正文或插图，非自动导入的个人库；教材插图/资源
 data/medical-books/药理学/main.pdf,tracked,历史医学教材正文或插图，非自动导入的个人库；教材插图/资源
 data/medical-books/药理学/main.tex,tracked,历史医学教材正文或插图，非自动导入的个人库；TeX章节正文/排版
+deploy/Caddyfile,tracked,HTTPS入口、请求大小限制与反向代理
+deploy/server.env.example,tracked,待填写服务器、域名、模型端点及账号配额模板
 docs/ADAPTIVE_RAG_DESIGN.md,tracked,自动快慢路由/GraphRAG调研与设计
 docs/CODEBASE_GUIDE.md,tracked,当前架构与本机启动演示说明
 docs/CODE_SYMBOLS.csv,tracked,Python函数/类/方法/路由符号位置索引
@@ -4310,10 +4317,13 @@ docs/PERSONAL_WORKSPACE.md,tracked,个人资料库、任务优先、多模态和
 docs/PLAN.md,tracked,初期分阶段改造计划
 docs/PROGRESS.md,tracked,开发进度、验证与分支发布留痕
 docs/RETRIEVAL_EVALUATION.md,tracked,早期功能检索实验说明，不代表临床准确率
+docs/SERVER_DEPLOYMENT.md,tracked,账号使用、本机预览、服务器部署与验证边界
 docs/SOURCE_LAYOUT.md,tracked,Notebook迁移、历史源码位置和语言统计说明
 docs/V2_GUIDE.md,tracked,V2功能、配置、运行与历史验收说明
 docs/V2_PROPOSAL.md,tracked,V2方案提案与设计背景
 docs/evaluation-seed.json,tracked,非临床中文软件标签的功能验收资料和问题
+docs/images/account-login.png,tracked,临时测试数据的真实登录界面截图
+docs/images/account-management.png,tracked,临时测试数据的管理员账号页面截图
 docs/images/medical-recall.svg,tracked,当前界面截图或评测图
 docs/images/question-review.png,tracked,当前界面截图或评测图
 docs/images/upload-to-questions.png,tracked,当前界面截图或评测图
@@ -4340,7 +4350,9 @@ frontend/public/favicon.ico,tracked,直接复制到构建结果的静态资源
 frontend/src/App.vue,tracked,导航、顶栏和页面工作区外壳
 frontend/src/api.ts,tracked,API请求与错误封装
 frontend/src/assets/logo.svg,tracked,前端静态图片资源
+frontend/src/components/AccountView.vue,tracked,账号额度、修改密码和管理员账号管理页面
 frontend/src/components/AskView.vue,tracked,直接问、批量文件/截图、任务结果与后续操作
+frontend/src/components/AuthView.vue,tracked,极简登录与注册入口
 frontend/src/components/BankView.vue,tracked,人工审题、编辑重审、操作记录、导出
 frontend/src/components/DocumentsView.vue,tracked,资料列表、导入、元数据、版本、重解析/切块、索引管理
 frontend/src/components/EvaluationsView.vue,tracked,自建评测和结果比较
@@ -4358,6 +4370,7 @@ frontend/src/env.d.ts,tracked,Vue/Vite类型环境
 frontend/src/main.ts,tracked,创建Vue应用、安装Router与Pinia
 frontend/src/pdf-text-layer.css,tracked,PDF文本层与高亮样式
 frontend/src/router.ts,tracked,Hash路由、主导航与更多工具导航
+frontend/src/stores/auth.ts,tracked,登录状态、会话过期与CSRF状态
 frontend/src/stores/workspace.ts,tracked,服务状态、资料/片段/待审题统计
 frontend/src/style.css,tracked,全局布局和视觉样式
 frontend/src/types.ts,tracked,领域数据类型
@@ -4429,6 +4442,8 @@ scripts/asset_download.py,tracked,按需执行的启动/环境/验证/评测工�
 scripts/benchmark_auto_v2.py,tracked,对比旧自动路由与新dense-first策略
 scripts/benchmark_medical.py,tracked,真实公开医学检索对照实验
 scripts/benchmark_retrieval.py,tracked,中文软件功能检索验收
+scripts/check_accounts_ui.py,tracked,临时数据下的真实浏览器账号流程验证
+scripts/check_container.py,tracked,Linux容器中的依赖、前端和账号流程验证
 scripts/check_environment.py,tracked,检查原版/Windows依赖环境
 scripts/check_local_model.py,tracked,真实Ollama问答/出题冒烟，非临床标签
 scripts/check_multimodal_model.py,tracked,真实模型图片/扫描PDF/内嵌图链路检查
@@ -4453,6 +4468,7 @@ scripts/render_medical_report.py,tracked,从结果生成评测图
 scripts/start.ps1,tracked,Windows现有环境启动FastAPI
 scripts/start_llama.ps1,tracked,按需执行的启动/环境/验证/评测工具
 scripts/start_ollama.ps1,tracked,按需执行的启动/环境/验证/评测工具
+tests/test_accounts.py,tracked,账号隔离、权限、会话、配额与配置回归测试
 tests/test_cli.py,tracked,自动化测试：cli 对应模块/流程
 tests/test_concepts.py,tracked,自动化测试：concepts 对应模块/流程
 tests/test_documents.py,tracked,自动化测试：documents 对应模块/流程
